@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Http\Middleware\EnsureCompanyInfoExists;
+use App\Http\Middleware\CheckAdminRole;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,7 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // 必要なカスタムミドルウェアのエイリアスのみ追加
+        $middleware->alias([
+            'company.exists' => EnsureCompanyInfoExists::class,
+            'admin' => CheckAdminRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
