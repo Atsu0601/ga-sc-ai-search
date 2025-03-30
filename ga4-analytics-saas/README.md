@@ -5,7 +5,7 @@ Dcoker起動
 ./vendor/bin/sail up -d
 
 シンボリックリンク
-docker-compose exec laravel.ga-analytics-saas  php artisan storage:link
+docker-compose exec laravel.ga-analytics-saas php artisan storage:link
 
 Tailwind CSS のインストール
 docker-compose exec laravel.ga-analytics-saas npm install -D tailwindcss postcss autoprefixer
