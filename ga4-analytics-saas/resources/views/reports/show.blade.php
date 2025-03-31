@@ -64,11 +64,26 @@
                                 <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ $report->getProgressPercentage() }}%"></div>
                             </div>
                             <p class="mt-2 text-sm text-gray-600">レポートの生成には数分かかることがあります。このページを更新すると進捗状況が更新されます。</p>
+
+                            <script>
+                                // 自動更新（30秒ごと）
+                                setTimeout(function() {
+                                    window.location.reload();
+                                }, 30000);
+                            </script>
                         </div>
                     @elseif ($report->status === 'failed')
                         <div class="mt-6 bg-red-50 p-4 rounded-lg">
                             <h3 class="text-lg font-medium text-red-800 mb-2">レポート生成に失敗しました</h3>
                             <p class="text-red-600">レポートの生成中にエラーが発生しました。もう一度お試しいただくか、管理者にお問い合わせください。</p>
+
+                            <form method="POST" action="{{ route('reports.destroy', $report->id) }}" class="mt-4">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="return confirm('このレポートを削除しますか？')">
+                                    レポートを削除
+                                </button>
+                            </form>
                         </div>
                     @endif
                 </div>
@@ -90,7 +105,17 @@
                                     <div class="p-4 rounded-lg {{ $recommendation->severity_css_class }}">
                                         <div class="flex items-start">
                                             <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white mr-3">
-                                                <i class="fas {{ $recommendation->category_icon_class }}"></i>
+                                                <svg class="h-5 w-5 {{ $recommendation->severity === 'critical' ? 'text-red-600' : ($recommendation->severity === 'warning' ? 'text-yellow-600' : 'text-blue-600') }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    @if ($recommendation->category === 'seo')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    @elseif ($recommendation->category === 'performance')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                    @elseif ($recommendation->category === 'content')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    @else
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                                    @endif
+                                                </svg>
                                             </div>
                                             <div>
                                                 <h4 class="font-medium">{{ $recommendation->category_japanese }}</h4>
@@ -105,67 +130,120 @@
                 </div>
 
                 <!-- レポートコンポーネント -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 bg-white border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">分析データ</h3>
+                @if (!$components->isEmpty())
+                    @foreach ($components as $component)
+                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                            <div class="p-6 bg-white border-b border-gray-200">
+                                <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $component->title }}</h3>
 
-                        @if ($components->isEmpty())
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <p class="text-center text-gray-500">このレポートにはデータコンポーネントがありません。</p>
-                            </div>
-                        @else
-                            <div class="space-y-8">
-                                @foreach ($components as $component)
-                                    <div class="bg-gray-50 p-4 rounded-lg">
-                                        <h4 class="font-medium text-lg mb-4">{{ $component->title }}</h4>
-
-                                        @if ($component->component_type === 'chart')
-                                            <div class="h-80">
-                                                <!-- Chart.jsなどでチャートを表示 -->
-                                                <canvas id="chart-{{ $component->id }}"></canvas>
-                                            </div>
-                                        @elseif ($component->component_type === 'table')
-                                            <div class="overflow-x-auto">
-                                                <table class="min-w-full divide-y divide-gray-200">
-                                                    <thead class="bg-gray-100">
-                                                        <tr>
-                                                            @foreach ($component->data_json['headers'] as $header)
-                                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    {{ $header }}
-                                                                </th>
-                                                            @endforeach
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach ($component->data_json['rows'] as $row)
-                                                            <tr class="bg-white">
-                                                                @foreach ($row as $cell)
-                                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                        {{ $cell }}
-                                                                    </td>
-                                                                @endforeach
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        @elseif ($component->component_type === 'heatmap')
-                                            <div class="h-80">
-                                                <!-- ヒートマップ表示 -->
-                                                <div id="heatmap-{{ $component->id }}"></div>
-                                            </div>
-                                        @else
-                                            <div class="prose">
-                                                <p>{{ $component->data_json['content'] ?? '' }}</p>
-                                            </div>
-                                        @endif
+                                @if ($component->component_type === 'text')
+                                    <div class="prose max-w-none">
+                                        {!! $component->data_json['content'] !!}
                                     </div>
-                                @endforeach
+                                @elseif ($component->component_type === 'chart')
+                                    <div class="h-80">
+                                        <canvas id="chart-{{ $component->id }}"></canvas>
+                                    </div>
+                                @elseif ($component->component_type === 'table')
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    @foreach ($component->data_json['headers'] as $header)
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            {{ $header }}
+                                                        </th>
+                                                    @endforeach
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                                                @foreach ($component->data_json['rows'] as $row)
+                                                    <tr>
+                                                        @foreach ($row as $cell)
+                                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                                {{ $cell }}
+                                                            </td>
+                                                        @endforeach
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @elseif ($component->component_type === 'heatmap')
+                                    <div class="h-80">
+                                        <canvas id="heatmap-{{ $component->id }}"></canvas>
+                                    </div>
+                                @endif
                             </div>
-                        @endif
-                    </div>
-                </div>
+                        </div>
+                    @endforeach
+                @endif
             @endif
         </div>
     </div>
+
+    @if ($report->status === 'completed' && !$components->isEmpty())
+        <!-- Chart.jsとヒートマップスクリプト -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // チャートとヒートマップの描画
+                @foreach ($components as $component)
+                    @if ($component->component_type === 'chart')
+                        // チャート描画
+                        const chartData{{ $component->id }} = @json($component->formatted_data);
+                        const chartCtx{{ $component->id }} = document.getElementById('chart-{{ $component->id }}').getContext('2d');
+                        new Chart(chartCtx{{ $component->id }}, chartData{{ $component->id }});
+                    @elseif ($component->component_type === 'heatmap')
+                        // ヒートマップ描画（簡易的な実装）
+                        const heatmapData{{ $component->id }} = @json($component->data_json);
+                        const heatmapCtx{{ $component->id }} = document.getElementById('heatmap-{{ $component->id }}').getContext('2d');
+
+                        // ヒートマップ用の色関数
+                        const getHeatmapColor = (value) => {
+                            const min = 0;
+                            const max = 100;
+                            const normalized = (value - min) / (max - min);
+                            const h = (1 - normalized) * 240; // 青から赤へのグラデーション
+                            return `hsl(${h}, 100%, 50%)`;
+                        };
+
+                        // キャンバスのサイズ設定
+                        const canvas = heatmapCtx{{ $component->id }}.canvas;
+                        const cellWidth = canvas.width / 24; // 24時間
+                        const cellHeight = canvas.height / 7; // 7日
+
+                        // ヒートマップの描画
+                        heatmapCtx{{ $component->id }}.clearRect(0, 0, canvas.width, canvas.height);
+
+                        heatmapData{{ $component->id }}.data.forEach(item => {
+                            const x = item.hour * cellWidth;
+                            const y = item.day * cellHeight;
+
+                            heatmapCtx{{ $component->id }}.fillStyle = getHeatmapColor(item.value);
+                            heatmapCtx{{ $component->id }}.fillRect(x, y, cellWidth, cellHeight);
+
+                            // 境界線
+                            heatmapCtx{{ $component->id }}.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                            heatmapCtx{{ $component->id }}.strokeRect(x, y, cellWidth, cellHeight);
+                        });
+
+                        // 軸ラベルの描画（簡易的）
+                        heatmapCtx{{ $component->id }}.fillStyle = '#000';
+                        heatmapCtx{{ $component->id }}.font = '10px Arial';
+
+                        // 日ラベル
+                        heatmapData{{ $component->id }}.days.forEach((day, index) => {
+                            heatmapCtx{{ $component->id }}.fillText(day, 5, index * cellHeight + cellHeight / 2 + 3);
+                        });
+
+                        // 時間ラベル（間引いて表示）
+                        for (let i = 0; i < 24; i += 3) {
+                            heatmapCtx{{ $component->id }}.fillText(`${i}時`, i * cellWidth + cellWidth / 2, canvas.height - 5);
+                        }
+                    @endif
+                @endforeach
+            });
+        </script>
+    @endif
 </x-app-layout>

@@ -30,6 +30,10 @@
                         {{ __('レポート一覧') }}
                     </x-nav-link>
 
+                    <x-nav-link :href="route('subscriptions.index')" :active="request()->routeIs('subscriptions.*')">
+                        {{ __('プラン設定') }}
+                    </x-nav-link>
+
                     <!-- 管理者向けメニュー -->
                     @if (Auth::user()->role === 'admin')
                         <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">

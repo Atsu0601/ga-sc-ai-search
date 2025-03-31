@@ -76,7 +76,7 @@
                                         <div class="text-sm text-gray-500">
                                             @if ($user->trial_ends_at && now()->lt(\Carbon\Carbon::parse($user->trial_ends_at)))
                                                 トライアル中 (残り {{ (int)now()->diffInDays(\Carbon\Carbon::parse($user->trial_ends_at)) }}日)
-                                            @elseif ($user->sub_status === 'trial')
+                                            @elseif ($user->subscription_status === 'trial')
                                                 トライアル終了
                                             @else
                                                 有効

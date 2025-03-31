@@ -24,7 +24,7 @@
                             @endif
                         </div>
 
-                        <a href="#" class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
+                        <a href="{{ route('subscriptions.index') }}" class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
                             プランをアップグレード
                         </a>
                     </div>
@@ -175,7 +175,7 @@
                         </table>
 
                         <div class="mt-4 text-right">
-                            <a href="#" class="text-sm text-blue-600 hover:underline">
+                            <a href="{{ route('reports.index') }}" class="text-sm text-blue-600 hover:underline">
                                 すべてのレポートを表示 →
                             </a>
                         </div>

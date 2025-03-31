@@ -8,9 +8,28 @@ use App\Jobs\GenerateAnalysisReport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ReportController extends Controller
 {
+    use AuthorizesRequests;
+
+    /**
+     * レポート一覧表示
+     */
+    public function index()
+    {
+        // ユーザーが所有するウェブサイトのIDを取得
+        $websiteIds = Auth::user()->websites()->pluck('id');
+
+        // レポートを取得
+        $reports = AnalysisReport::whereIn('website_id', $websiteIds)
+                                ->orderByDesc('created_at')
+                                ->paginate(10);
+
+        return view('reports.index', compact('reports'));
+    }
+
     /**
      * レポート作成フォーム表示
      */
@@ -25,7 +44,10 @@ class ReportController extends Controller
                              ->with('error', 'レポート作成にはGA4とSearch Consoleの接続が必要です。');
         }
 
-        return view('reports.create', compact('website'));
+        // GET パラメータからレポートタイプを取得
+        $reportType = request()->get('type', 'executive');
+
+        return view('reports.create', compact('website', 'reportType'));
     }
 
     /**
@@ -86,22 +108,6 @@ class ReportController extends Controller
     }
 
     /**
-     * すべてのレポート一覧表示
-     */
-    public function index()
-    {
-        // ユーザーが所有するウェブサイトのIDを取得
-        $websiteIds = Auth::user()->websites()->pluck('id');
-
-        // レポートを取得
-        $reports = AnalysisReport::whereIn('website_id', $websiteIds)
-                                ->orderByDesc('created_at')
-                                ->paginate(10);
-
-        return view('reports.index', compact('reports'));
-    }
-
-    /**
      * PDFダウンロード
      */
     public function download(AnalysisReport $report)
@@ -122,5 +128,20 @@ class ReportController extends Controller
 
         return redirect()->route('reports.show', $report->id)
                          ->with('error', 'PDFファイルが見つかりません。');
+    }
+
+    /**
+     * レポート削除
+     */
+    public function destroy(AnalysisReport $report)
+    {
+        // 所有者確認
+        $this->authorize('view', $report->website);
+
+        // レポートを削除
+        $report->delete();
+
+        return redirect()->route('reports.index')
+                         ->with('success', 'レポートを削除しました。');
     }
 }

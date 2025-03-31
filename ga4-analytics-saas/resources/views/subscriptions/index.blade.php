@@ -29,7 +29,7 @@
                             <div>
                                 <h4 class="text-xl font-bold">{{ ucfirst(Auth::user()->plan_name) }}</h4>
 
-                                @if (Auth::user()->sub_status === 'trial')
+                                @if (Auth::user()->subscription_status === 'trial')
                                     <p class="text-sm text-yellow-600 mt-1">
                                         @if (Auth::user()->trial_ends_at && now()->lt(\Carbon\Carbon::parse(Auth::user()->trial_ends_at)))
                                             無料トライアル中 - あと{{ (int)now()->diffInDays(\Carbon\Carbon::parse(Auth::user()->trial_ends_at)) }}日（{{ \Carbon\Carbon::parse(Auth::user()->trial_ends_at)->format('Y年m月d日') }}まで）
@@ -47,7 +47,7 @@
                                 </div>
                             </div>
 
-                            @if (Auth::user()->sub_status === 'trial')
+                            @if (Auth::user()->subscription_status === 'trial')
                                 <a href="#plans" class="mt-4 md:mt-0 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                     有料プランにアップグレード
                                 </a>
@@ -99,7 +99,7 @@
                                 </ul>
 
                                 <div class="mt-6">
-                                    <form action="#" method="POST">
+                                    <form action="{{ route('subscriptions.subscribe') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="plan" value="starter">
                                         <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
@@ -156,7 +156,7 @@
                                 </ul>
 
                                 <div class="mt-6">
-                                    <form action="#" method="POST">
+                                    <form action="{{ route('subscriptions.subscribe') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="plan" value="pro">
                                         <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
@@ -209,7 +209,7 @@
                                 </ul>
 
                                 <div class="mt-6">
-                                    <form action="#" method="POST">
+                                    <form action="{{ route('subscriptions.subscribe') }}" method="POST">
                                         @csrf
                                         <input type="hidden" name="plan" value="agency">
                                         <button type="submit" class="w-full bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
@@ -229,7 +229,7 @@
                     <h3 class="text-lg font-medium text-gray-900 mb-4">支払い情報</h3>
 
                     <div class="bg-gray-50 p-6 rounded-lg">
-                        @if (Auth::user()->sub_status !== 'trial')
+                        @if (Auth::user()->subscription_status !== 'trial')
                             <div class="mb-4">
                                 <h4 class="font-medium mb-2">クレジットカード情報</h4>
                                 <div class="flex items-center">
@@ -316,14 +316,14 @@
             </div>
 
             <!-- サブスクリプション管理 -->
-            @if (Auth::user()->sub_status !== 'trial')
+            @if (Auth::user()->subscription_status !== 'trial')
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 bg-white border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">サブスクリプション管理</h3>
 
                         <div class="space-y-4">
                             <div>
-                                <form method="POST" action="#">
+                                <form method="POST" action="{{ route('subscriptions.change-plan') }}">
                                     @csrf
                                     <button type="submit" class="text-yellow-600 hover:text-yellow-800 font-medium" onclick="return confirm('プランを変更しますか？現在のプランは次回の請求日まで有効です。')">
                                         プランを変更する
@@ -332,7 +332,7 @@
                             </div>
 
                             <div>
-                                <form method="POST" action="#">
+                                <form method="POST" action="{{ route('subscriptions.cancel') }}">
                                     @csrf
                                     <button type="submit" class="text-red-600 hover:text-red-800 font-medium" onclick="return confirm('サブスクリプションをキャンセルしますか？この操作は取り消せません。')">
                                         サブスクリプションをキャンセルする

@@ -15,12 +15,12 @@
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <h4 class="font-medium mb-2">総サブスクリプション数</h4>
-                            <p class="text-2xl font-bold">{{ \App\Models\User::where('sub_status', '!=', 'trial')->count() }}</p>
+                            <p class="text-2xl font-bold">{{ \App\Models\User::where('subscription_status', '!=', 'trial')->count() }}</p>
                         </div>
 
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <h4 class="font-medium mb-2">トライアルユーザー数</h4>
-                            <p class="text-2xl font-bold">{{ \App\Models\User::where('sub_status', '=', 'trial')->count() }}</p>
+                            <p class="text-2xl font-bold">{{ \App\Models\User::where('subscription_status', '=', 'trial')->count() }}</p>
                         </div>
 
                         <div class="bg-gray-50 p-4 rounded-lg">

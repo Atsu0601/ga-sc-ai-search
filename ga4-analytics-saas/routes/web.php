@@ -6,6 +6,7 @@ use App\Http\Controllers\GoogleApiController;
 use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\DataSnapshotController;
 use App\Http\Controllers\Admin;
 use Illuminate\Support\Facades\Route;
 
@@ -65,6 +66,16 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     // レポート作成
     Route::get('/websites/{website}/reports/create', [ReportController::class, 'create'])->name('reports.create');
     Route::post('/websites/{website}/reports', [ReportController::class, 'store'])->name('reports.store');
+
+    // データスナップショット管理
+    Route::get('/websites/{website}/snapshots', [DataSnapshotController::class, 'index'])
+        ->name('snapshots.index');
+    Route::get('/websites/{website}/snapshots/{id}', [DataSnapshotController::class, 'show'])
+        ->name('snapshots.show');
+    Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])
+        ->name('snapshots.create');
+    Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])
+        ->name('snapshots.data');
 });
 
 // 会社情報登録・編集用ルート

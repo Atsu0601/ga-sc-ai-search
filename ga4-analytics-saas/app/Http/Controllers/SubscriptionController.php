@@ -46,7 +46,7 @@ class SubscriptionController extends Controller
                 break;
         }
 
-        $user->sub_status = 'active';
+        $user->subscription_status = 'active';
         $user->save();
 
         return redirect()->route('subscriptions.index')
@@ -73,7 +73,7 @@ class SubscriptionController extends Controller
         // ここにStripeでのサブスクリプション解約処理が入る
 
         // 仮実装：次回の請求日でサブスクリプション終了
-        $user->sub_status = 'cancelled';
+        $user->subscription_status = 'cancelled';
         $user->save();
 
         return redirect()->route('subscriptions.index')

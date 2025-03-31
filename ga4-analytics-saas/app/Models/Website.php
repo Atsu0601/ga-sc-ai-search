@@ -33,4 +33,9 @@ class Website extends Model
     {
         return $this->hasOne(SearchConsoleAccount::class);
     }
+
+    public function dataSnapshots()
+    {
+        return $this->hasMany(DataSnapshot::class);
+    }
 }

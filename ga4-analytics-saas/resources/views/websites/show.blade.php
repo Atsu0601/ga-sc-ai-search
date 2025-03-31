@@ -187,7 +187,7 @@
 
             <!-- データ分析セクション -->
             @if ($website->status === 'active')
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                     <div class="p-6 bg-white border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">データ分析</h3>
 
@@ -219,6 +219,33 @@
                     </div>
                 </div>
             @endif
+
+            <!-- データスナップショット -->
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                <div class="p-6 bg-white border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">データスナップショット</h3>
+                        <a href="{{ route('snapshots.index', $website->id) }}" class="text-blue-600 hover:text-blue-800">
+                            すべてのスナップショットを表示 →
+                        </a>
+                    </div>
+
+                    <p class="text-gray-600 mb-4">データスナップショットは、Google AnalyticsとSearch Consoleからのデータを日別に保存したものです。</p>
+
+                    <div class="flex space-x-2">
+                        <form action="{{ route('snapshots.create', $website->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
+                                新規スナップショット作成
+                            </button>
+                        </form>
+
+                        <a href="{{ route('snapshots.index', $website->id) }}" class="bg-gray-500 hover:bg-gray-700 text-white text-sm font-bold py-2 px-4 rounded">
+                            スナップショット一覧
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>
