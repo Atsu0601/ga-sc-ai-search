@@ -13,17 +13,17 @@
                     <h3 class="text-lg font-semibold mb-4">管理メニュー</h3>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <a href="" class="block p-6 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-150">
+                        <a href="{{ route('admin.users.index') }}" class="block p-6 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-150">
                             <h4 class="font-medium text-blue-800 mb-2">ユーザー管理</h4>
                             <p class="text-sm text-gray-600">ユーザーアカウントと会社情報の管理を行います</p>
                         </a>
 
-                        <a href="{{ route('subscriptions.index') }}" class="block p-6 bg-green-50 hover:bg-green-100 rounded-lg transition duration-150">
+                        <a href="{{ route('admin.subscriptions.index') }}" class="block p-6 bg-green-50 hover:bg-green-100 rounded-lg transition duration-150">
                             <h4 class="font-medium text-green-800 mb-2">サブスクリプション管理</h4>
                             <p class="text-sm text-gray-600">課金プランと支払い状況を管理します</p>
                         </a>
 
-                        <a href="{{ route('settings.index') }}" class="block p-6 bg-purple-50 hover:bg-purple-100 rounded-lg transition duration-150">
+                        <a href="{{ route('admin.settings.index') }}" class="block p-6 bg-purple-50 hover:bg-purple-100 rounded-lg transition duration-150">
                             <h4 class="font-medium text-purple-800 mb-2">システム設定</h4>
                             <p class="text-sm text-gray-600">APIキーやシステム設定を管理します</p>
                         </a>

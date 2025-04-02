@@ -19,6 +19,12 @@
                 </div>
             @endif
 
+            @if (session('info'))
+                <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span class="block sm:inline">{{ session('info') }}</span>
+                </div>
+            @endif
+
             <!-- 現在のプラン情報 -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6 bg-white border-b border-gray-200">
@@ -103,9 +109,12 @@
                                             現在のプラン
                                         </button>
                                     @else
-                                        <a href="{{ route('subscriptions.checkout', ['plan' => $plan->name]) }}" class="block w-full text-center bg-{{ $plan->name === 'starter' ? 'blue' : ($plan->name === 'pro' ? 'indigo' : 'purple') }}-500 hover:bg-{{ $plan->name === 'starter' ? 'blue' : ($plan->name === 'pro' ? 'indigo' : 'purple') }}-700 text-white font-bold py-2 px-4 rounded">
-                                            このプランを選択
-                                        </a>
+                                        <form action="{{ route('subscriptions.checkout') }}" method="GET">
+                                            <input type="hidden" name="plan" value="{{ $plan->name }}">
+                                            <button type="submit" class="w-full bg-{{ $plan->name === 'starter' ? 'blue' : ($plan->name === 'pro' ? 'indigo' : 'purple') }}-500 hover:bg-{{ $plan->name === 'starter' ? 'blue' : ($plan->name === 'pro' ? 'indigo' : 'purple') }}-700 text-white font-bold py-2 px-4 rounded">
+                                                このプランを選択
+                                            </button>
+                                        </form>
                                     @endif
                                 </div>
                             </div>
@@ -123,82 +132,59 @@
                     <div class="bg-gray-50 p-6 rounded-lg">
                         @if (Auth::user()->subscription_status !== 'trial')
                             <div class="mb-4">
-                                <h4 class="font-medium mb-2">クレジットカード情報</h4>
+                                <h4 class="font-medium mb-2">お支払い方法</h4>
                                 <div class="flex items-center">
                                     <svg class="h-8 w-8 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                     </svg>
-                                    @if (Auth::user()->hasDefaultPaymentMethod())
-                                        @php
-                                            $pm = Auth::user()->defaultPaymentMethod();
-                                        @endphp
-                                        <span>**** **** **** {{ $pm->card->last4 }}</span>
-                                        <span class="ml-2 text-sm text-gray-500">有効期限: {{ $pm->card->exp_month }}/{{ $pm->card->exp_year }}</span>
-                                        <a href="{{ route('subscriptions.checkout', ['plan' => Auth::user()->plan_name]) }}" class="ml-4 text-sm text-blue-600 hover:text-blue-800">変更</a>
-                                    @else
-                                        <span>支払い方法が登録されていません</span>
-                                        <a href="{{ route('subscriptions.checkout', ['plan' => Auth::user()->plan_name]) }}" class="ml-4 text-sm text-blue-600 hover:text-blue-800">追加</a>
+                                    <span>クレジットカード（Stripe決済）</span>
+
+                                    @if (Auth::user()->stripe_id)
+                                        <a href="{{ route('subscriptions.checkout', ['plan' => Auth::user()->plan_name, 'update_payment' => true]) }}" class="ml-4 text-sm text-blue-600 hover:text-blue-800">
+                                            支払い方法を変更
+                                        </a>
                                     @endif
                                 </div>
                             </div>
 
-                            @if (Auth::user()->hasStripeId())
-                                <div>
-                                    <h4 class="font-medium mb-2">支払い履歴</h4>
-                                    <div class="overflow-x-auto">
-                                        <table class="min-w-full divide-y divide-gray-200">
-                                            <thead class="bg-gray-50">
-                                                <tr>
-                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        日付
-                                                    </th>
-                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        内容
-                                                    </th>
-                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        金額
-                                                    </th>
-                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        ステータス
-                                                    </th>
-                                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        領収書
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="bg-white divide-y divide-gray-200">
-                                                @forelse (Auth::user()->invoices() as $invoice)
-                                                <tr>
-                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {{ $invoice->date()->format('Y/m/d') }}
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {{ ucfirst(Auth::user()->plan_name) }}プラン ({{ $invoice->hasStartingBalance() ? '初回' : '月額' }})
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        ¥{{ number_format($invoice->total() / 100) }}
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap">
-                                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                            支払い済み
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        <a href="{{ route('subscriptions.invoice', $invoice->id) }}" class="text-blue-600 hover:text-blue-800">ダウンロード</a>
-                                                    </td>
-                                                </tr>
-                                                @empty
-                                                <tr>
-                                                    <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            <div>
+                                <h4 class="font-medium mb-2">支払い履歴</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    日付
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    内容
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    金額
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    ステータス
+                                                </th>
+                                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    領収書
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <!-- Webhookでインボイスデータを取得して表示するか、Stripeからデータを取得して表示 -->
+                                            <tr>
+                                                <td colspan="5" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                                    @if (Auth::user()->stripe_id)
+                                                        支払い履歴はStripeから自動的に同期されます
+                                                    @else
                                                         支払い履歴がありません
-                                                    </td>
-                                                </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                            @endif
+                            </div>
                         @else
                             <p class="text-center text-gray-500">プランをアップグレードすると、ここに支払い情報が表示されます。</p>
                         @endif
@@ -232,11 +218,11 @@
                                 </form>
                             </div>
 
-                            @if (Auth::user()->subscription('default') && !Auth::user()->subscription('default')->cancelled())
+                            @if (Auth::user()->subscription_status !== 'cancelled')
                                 <div class="mt-6">
                                     <form method="POST" action="{{ route('subscriptions.cancel') }}">
                                         @csrf
-                                        <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="return confirm('サブスクリプションをキャンセルしますか？この操作は取り消せません。')">
+                                        <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="return confirm('サブスクリプションをキャンセルしますか？この操作は元に戻せません。')">
                                             サブスクリプションをキャンセルする
                                         </button>
                                     </form>

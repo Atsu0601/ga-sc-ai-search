@@ -7,6 +7,9 @@ use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\DataSnapshotController;
+use App\Http\Controllers\StripeWebhookController;
+use Laravel\Cashier\Http\Controllers\WebhookController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use App\Http\Controllers\Admin;
 use Illuminate\Support\Facades\Route;
 
@@ -42,10 +45,17 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
 
     // サブスクリプション管理
     Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::get('/subscriptions/checkout', [SubscriptionController::class, 'checkout'])->name('subscriptions.checkout');
+    Route::get('/subscriptions/success', [SubscriptionController::class, 'success'])->name('subscriptions.success');
+    Route::get('/subscriptions/invoices/{invoice}', [SubscriptionController::class, 'downloadInvoice'])->name('subscriptions.invoice');
     Route::post('/subscriptions/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscriptions.subscribe');
+    Route::get('/subscriptions/change/success', [SubscriptionController::class, 'changeSuccess'])->name('subscriptions.change.success');
     Route::post('/subscriptions/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
     Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
-
+    // Stripe Webhook
+    Route::post('/stripe/webhook', [WebhookController::class, 'handleWebhook'])
+    ->name('cashier.webhook')
+    ->withoutMiddleware([VerifyCsrfToken::class]);
     // Google Analytics
     Route::get('/google/analytics/redirect/{website}', [GoogleApiController::class, 'redirectToGoogleAnalytics'])
         ->name('google.analytics.redirect');
@@ -68,14 +78,10 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::post('/websites/{website}/reports', [ReportController::class, 'store'])->name('reports.store');
 
     // データスナップショット管理
-    Route::get('/websites/{website}/snapshots', [DataSnapshotController::class, 'index'])
-        ->name('snapshots.index');
-    Route::get('/websites/{website}/snapshots/{id}', [DataSnapshotController::class, 'show'])
-        ->name('snapshots.show');
-    Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])
-        ->name('snapshots.create');
-    Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])
-        ->name('snapshots.data');
+    Route::get('/websites/{website}/snapshots', [DataSnapshotController::class, 'index'])->name('snapshots.index');
+    Route::get('/websites/{website}/snapshots/{id}', [DataSnapshotController::class, 'show'])->name('snapshots.show');
+    Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])->name('snapshots.create');
+    Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])->name('snapshots.data');
 });
 
 // 会社情報登録・編集用ルート
@@ -97,14 +103,22 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('users', Admin\UserController::class);
 
     // サブスクリプション管理
-    Route::get('/subscriptions', function () {
-        return view('admin.subscriptions.index');
-    })->name('subscriptions.index');
+    Route::get('/subscriptions', [Admin\SubscriptionController::class, 'index'])->name('subscriptions.index');
+    Route::get('/subscriptions/plans', [Admin\SubscriptionController::class, 'plans'])->name('subscriptions.plans');
+    Route::get('/subscriptions/plans/create', [Admin\SubscriptionController::class, 'createPlan'])->name('subscriptions.plans.create');
+    Route::post('/subscriptions/plans', [Admin\SubscriptionController::class, 'storePlan'])->name('subscriptions.plans.store');
+    Route::get('/subscriptions/plans/{plan}/edit', [Admin\SubscriptionController::class, 'editPlan'])->name('subscriptions.plans.edit');
+    Route::put('/subscriptions/plans/{plan}', [Admin\SubscriptionController::class, 'updatePlan'])->name('subscriptions.plans.update');
+    Route::delete('/subscriptions/plans/{plan}', [Admin\SubscriptionController::class, 'destroyPlan'])->name('subscriptions.plans.destroy');
+    Route::get('/subscriptions/payments', [Admin\SubscriptionController::class, 'payments'])->name('subscriptions.payments');
 
     // システム設定
-    Route::get('/settings', function () {
-        return view('admin.settings.index');
-    })->name('settings.index');
+    Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings.index');
+    Route::post('/settings/api', [Admin\SettingController::class, 'updateApi'])->name('settings.update.api');
+    Route::post('/settings/system', [Admin\SettingController::class, 'updateSystem'])->name('settings.update.system');
+    Route::post('/settings/cache/clear', [Admin\SettingController::class, 'clearCache'])->name('settings.cache.clear');
+    Route::post('/settings/cache/config', [Admin\SettingController::class, 'cacheConfig'])->name('settings.cache.config');
+    Route::post('/settings/cache/routes', [Admin\SettingController::class, 'cacheRoutes'])->name('settings.cache.routes');
 });
 
 require __DIR__.'/auth.php';

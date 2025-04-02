@@ -58,4 +58,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(Website::class);
     }
+
+    /**
+     * ユーザーの現在のサブスクリプションプランを取得
+     */
+    public function getCurrentPlan()
+    {
+        $plan = Plan::where('name', $this->plan_name)->first();
+
+        if (!$plan && $this->subscription('default')) {
+            // Stripeサブスクリプションが存在する場合、そこからプラン情報を取得
+            $stripePlanId = $this->subscription('default')->stripe_plan;
+            $plan = Plan::where('stripe_plan_id', $stripePlanId)->first();
+        }
+
+        return $plan;
+    }
+
+    /**
+     * ユーザーがサブスクリプションを持っているかどうかを確認
+     */
+    public function hasActiveSubscription()
+    {
+        return $this->subscription_status !== 'trial' || $this->subscription('default')->active();
+    }
 }

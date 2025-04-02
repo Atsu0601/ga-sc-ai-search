@@ -90,19 +90,19 @@ class WebsiteController extends Controller
      */
     public function update(Request $request, Website $website)
     {
-        // 所有者確認
         $this->authorize('update', $website);
 
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'url' => 'required|url|max:255',
             'description' => 'nullable|string',
+            'status' => 'required|in:active,pending,inactive',
         ]);
 
-        $website->update($request->only(['name', 'url', 'description']));
+        $website->update($validated);
 
-        return redirect()->route('websites.show', $website->id)
-                         ->with('success', 'ウェブサイト情報が更新されました。');
+        return redirect()->route('websites.show', $website)
+                        ->with('success', 'ウェブサイト情報が更新されました。');
     }
 
     /**
