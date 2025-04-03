@@ -10,6 +10,7 @@ use Stripe\Stripe;
 use Stripe\Event;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
+use Carbon\Carbon;
 
 class StripeWebhookController extends Controller
 {
@@ -106,6 +107,54 @@ class StripeWebhookController extends Controller
 
         if (isset($session->subscription)) {
             $user->stripe_subscription_id = $session->subscription;
+
+            try {
+                // Stripeからサブスクリプション情報を取得
+                $subscription = \Stripe\Subscription::retrieve([
+                    'id' => $session->subscription,
+                    'expand' => ['default_payment_method']
+                ]);
+
+                // Cashierサブスクリプションテーブルにデータを保存
+                $dbSubscription = $user->subscriptions()->updateOrCreate(
+                    ['stripe_id' => $session->subscription],
+                    [
+                        'type' => 'default',
+                        'stripe_status' => $subscription->status,
+                        'stripe_price' => $plan->stripe_plan_id,
+                        'quantity' => 1,
+                        'trial_ends_at' => null,
+                        'ends_at' => null,
+                    ]
+                );
+
+                // サブスクリプション項目を保存
+                if (isset($subscription->items) && isset($subscription->items->data)) {
+                    foreach ($subscription->items->data as $item) {
+                        $dbSubscription->items()->updateOrCreate(
+                            ['stripe_id' => $item->id],
+                            [
+                                'stripe_product' => $item->price->product,
+                                'stripe_price' => $item->price->id,
+                                'quantity' => $item->quantity,
+                            ]
+                        );
+                    }
+                }
+
+                // 支払い方法情報を更新
+                if (isset($subscription->default_payment_method) &&
+                    isset($subscription->default_payment_method->card)) {
+                    $user->pm_type = $subscription->default_payment_method->card->brand;
+                    $user->pm_last_four = $subscription->default_payment_method->card->last4;
+                }
+            } catch (\Exception $e) {
+                Log::error('Error saving subscription data: ' . $e->getMessage(), [
+                    'subscription_id' => $session->subscription,
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id
+                ]);
+            }
         }
 
         $user->save();
@@ -130,8 +179,27 @@ class StripeWebhookController extends Controller
             return;
         }
 
-        // 請求に関する情報を記録できます
-        // たとえば、請求履歴テーブルにデータを保存するなど
+        // サブスクリプションIDがあれば処理
+        if (isset($invoice->subscription)) {
+            try {
+                // サブスクリプションステータスを更新
+                $dbSubscription = $user->subscriptions()
+                    ->where('stripe_id', $invoice->subscription)
+                    ->first();
+
+                if ($dbSubscription) {
+                    $dbSubscription->stripe_status = 'active';
+                    $dbSubscription->ends_at = null; // 支払いが成功したらキャンセル日をリセット
+                    $dbSubscription->save();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error updating subscription after payment: ' . $e->getMessage(), [
+                    'invoice_id' => $invoice->id,
+                    'subscription_id' => $invoice->subscription,
+                    'user_id' => $user->id
+                ]);
+            }
+        }
 
         Log::info('Invoice payment succeeded', [
             'user_id' => $user->id,
@@ -151,6 +219,27 @@ class StripeWebhookController extends Controller
         if (!$user) {
             Log::error('User not found for invoice', ['customer_id' => $invoice->customer]);
             return;
+        }
+
+        // サブスクリプションIDがあれば処理
+        if (isset($invoice->subscription)) {
+            try {
+                // サブスクリプションステータスを更新
+                $dbSubscription = $user->subscriptions()
+                    ->where('stripe_id', $invoice->subscription)
+                    ->first();
+
+                if ($dbSubscription) {
+                    $dbSubscription->stripe_status = 'past_due';
+                    $dbSubscription->save();
+                }
+            } catch (\Exception $e) {
+                Log::error('Error updating subscription after failed payment: ' . $e->getMessage(), [
+                    'invoice_id' => $invoice->id,
+                    'subscription_id' => $invoice->subscription,
+                    'user_id' => $user->id
+                ]);
+            }
         }
 
         // 支払い失敗の通知をメールで送信するなどの処理
@@ -176,6 +265,33 @@ class StripeWebhookController extends Controller
         if (!$user) {
             Log::error('User not found for subscription', ['customer_id' => $customer]);
             return;
+        }
+
+        // Cashierサブスクリプションテーブルも更新
+        try {
+            $dbSubscription = $user->subscriptions()
+                ->where('stripe_id', $subscription->id)
+                ->first();
+
+            if ($dbSubscription) {
+                $dbSubscription->stripe_status = $status;
+
+                if ($subscription->cancel_at_period_end) {
+                    $dbSubscription->ends_at = Carbon::createFromTimestamp($subscription->current_period_end);
+                } else if ($status === 'canceled' && !$dbSubscription->ends_at) {
+                    $dbSubscription->ends_at = Carbon::now();
+                } else if ($status === 'active' && $dbSubscription->ends_at) {
+                    $dbSubscription->ends_at = null;
+                }
+
+                $dbSubscription->save();
+            }
+        } catch (\Exception $e) {
+            Log::error('Error updating subscription in database: ' . $e->getMessage(), [
+                'subscription_id' => $subscription->id,
+                'user_id' => $user->id,
+                'status' => $status
+            ]);
         }
 
         // キャンセル予定の場合
@@ -233,6 +349,24 @@ class StripeWebhookController extends Controller
         if (!$user) {
             Log::error('User not found for subscription', ['customer_id' => $customer]);
             return;
+        }
+
+        // Cashierサブスクリプションテーブルも更新
+        try {
+            $dbSubscription = $user->subscriptions()
+                ->where('stripe_id', $subscription->id)
+                ->first();
+
+            if ($dbSubscription && !$dbSubscription->ends_at) {
+                $dbSubscription->ends_at = Carbon::now();
+                $dbSubscription->stripe_status = 'canceled';
+                $dbSubscription->save();
+            }
+        } catch (\Exception $e) {
+            Log::error('Error updating deleted subscription in database: ' . $e->getMessage(), [
+                'subscription_id' => $subscription->id,
+                'user_id' => $user->id
+            ]);
         }
 
         // サブスクリプション終了の処理

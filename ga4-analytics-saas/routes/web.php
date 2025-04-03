@@ -52,10 +52,7 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::get('/subscriptions/change/success', [SubscriptionController::class, 'changeSuccess'])->name('subscriptions.change.success');
     Route::post('/subscriptions/change-plan', [SubscriptionController::class, 'changePlan'])->name('subscriptions.change-plan');
     Route::post('/subscriptions/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
-    // Stripe Webhook
-    Route::post('/stripe/webhook', [WebhookController::class, 'handleWebhook'])
-    ->name('cashier.webhook')
-    ->withoutMiddleware([VerifyCsrfToken::class]);
+
     // Google Analytics
     Route::get('/google/analytics/redirect/{website}', [GoogleApiController::class, 'redirectToGoogleAnalytics'])
         ->name('google.analytics.redirect');
@@ -83,6 +80,11 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])->name('snapshots.create');
     Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])->name('snapshots.data');
 });
+
+// Stripe Webhook
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook'])
+->name('cashier.webhook')
+->withoutMiddleware([VerifyCsrfToken::class]);
 
 // 会社情報登録・編集用ルート
 Route::middleware(['auth'])->group(function () {

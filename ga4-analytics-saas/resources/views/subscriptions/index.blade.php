@@ -132,9 +132,9 @@
                                         @php
                                             $pm = Auth::user()->defaultPaymentMethod();
                                         @endphp
-                                        <span>**** **** **** {{ $pm->card->last4 }}</span>
-                                        <span class="ml-2 text-sm text-gray-500">有効期限: {{ $pm->card->exp_month }}/{{ $pm->card->exp_year }}</span>
-                                        <a href="{{ route('subscriptions.checkout', ['plan' => Auth::user()->plan_name]) }}" class="ml-4 text-sm text-blue-600 hover:text-blue-800">変更</a>
+                                        <span>**** **** **** {{ Auth::user()->pm_last_four }}</span>
+                                        {{-- <span class="ml-2 text-sm text-gray-500">有効期限: {{ $pm->card->exp_month }}/{{ $pm->card->exp_year }}</span> --}}
+                                        <a href="{{ route('subscriptions.checkout', ['plan' => Auth::user()->plan_name, 'update_payment' => true]) }}" class="ml-4 text-sm text-blue-600 hover:text-blue-800">変更</a>
                                     @else
                                         <span>支払い方法が登録されていません</span>
                                         <a href="{{ route('subscriptions.checkout', ['plan' => Auth::user()->plan_name]) }}" class="ml-4 text-sm text-blue-600 hover:text-blue-800">追加</a>
@@ -176,7 +176,7 @@
                                                         {{ ucfirst(Auth::user()->plan_name) }}プラン ({{ $invoice->hasStartingBalance() ? '初回' : '月額' }})
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        ¥{{ number_format($invoice->total() / 100) }}
+                                                        ¥{{ number_format((int)$invoice->total() / 100) }}
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap">
                                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -232,7 +232,7 @@
                                 </form>
                             </div>
 
-                            @if (Auth::user()->subscription('default') && !Auth::user()->subscription('default')->cancelled())
+                            @if (Auth::user()->subscription('default') && !Auth::user()->subscription('default')->canceled())
                                 <div class="mt-6">
                                     <form method="POST" action="{{ route('subscriptions.cancel') }}">
                                         @csrf

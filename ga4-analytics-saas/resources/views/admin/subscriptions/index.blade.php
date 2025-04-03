@@ -57,7 +57,7 @@
 
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <h4 class="font-medium mb-2">累計売上</h4>
-                            <p class="text-2xl font-bold">¥{{ number_format($stats['revenue']) }}</p>
+                            <p class="text-2xl font-bold">¥{{ number_format($stats['total_subscriptions']) }}</p>
                         </div>
                     </div>
                 </div>
@@ -87,7 +87,7 @@
                         <a href="{{ route('admin.subscriptions.payments') }}" class="text-blue-600 hover:text-blue-800">すべての支払い履歴を表示 →</a>
                     </div>
 
-                    @if ($recentPayments->isEmpty())
+                    @if ($recentSubscriptions->isEmpty())
                         <div class="bg-gray-50 p-4 rounded-lg">
                             <p class="text-center text-gray-500">支払い履歴はまだありません。</p>
                         </div>
@@ -117,7 +117,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach ($recentPayments as $payment)
+                                    @foreach ($recentSubscriptions as $payment)
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="text-sm font-medium text-gray-900">
