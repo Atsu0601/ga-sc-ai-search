@@ -9,6 +9,7 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\DataSnapshotController;
 use App\Http\Controllers\StripeWebhookController;
 use Laravel\Cashier\Http\Controllers\WebhookController;
+use App\Http\Controllers\HeatmapController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use App\Http\Controllers\Admin;
 use Illuminate\Support\Facades\Route;
@@ -79,12 +80,19 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::get('/websites/{website}/snapshots/{id}', [DataSnapshotController::class, 'show'])->name('snapshots.show');
     Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])->name('snapshots.create');
     Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])->name('snapshots.data');
+
+    // ヒートマップ管理
+    Route::resource('websites.heatmaps', HeatmapController::class);
+    // ヒートマップデータのアップロード処理
+    Route::post('/heatmaps/upload-data', [HeatmapController::class, 'uploadData'])->name('heatmaps.upload-data');
+    // スクロールデータのアップロード処理
+    Route::post('/heatmaps/upload-scroll-data', [HeatmapController::class, 'uploadScrollData'])->name('heatmaps.upload-scroll-data');
 });
 
 // Stripe Webhook
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook'])
-->name('cashier.webhook')
-->withoutMiddleware([VerifyCsrfToken::class]);
+    ->name('cashier.webhook')
+    ->withoutMiddleware([VerifyCsrfToken::class]);
 
 // 会社情報登録・編集用ルート
 Route::middleware(['auth'])->group(function () {
@@ -123,4 +131,4 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/settings/cache/routes', [Admin\SettingController::class, 'cacheRoutes'])->name('settings.cache.routes');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
