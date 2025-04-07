@@ -16,8 +16,19 @@
 
                         <div class="mb-4">
                             <x-input-label for="page_url" :value="__('ページURL')" />
-                            <x-text-input id="page_url" class="block mt-1 w-full" type="url" name="page_url"
-                                :value="old('page_url', $heatmap->page_url)" required />
+                            @if (count($pageUrls) > 0)
+                                <select id="page_url" name="page_url"
+                                    class="rounded-md shadow-sm border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 block mt-1 w-full">
+                                    @foreach ($pageUrls as $url)
+                                        <option value="{{ $url }}"
+                                            {{ old('page_url', $heatmap->page_url) == $url ? 'selected' : '' }}>
+                                            {{ $url }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <x-text-input id="page_url" class="block mt-1 w-full" type="url" name="page_url"
+                                    :value="old('page_url', $heatmap->page_url)" required />
+                            @endif
                             <x-input-error :messages="$errors->get('page_url')" class="mt-2" />
                         </div>
 
@@ -51,63 +62,48 @@
                         </div>
 
                         <div class="mb-6">
-                            <x-input-label :value="__('データ編集')" />
+                            <div class="flex items-center">
+                                <input id="regenerate_data" name="regenerate_data" type="checkbox" value="yes"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <label for="regenerate_data" class="ml-2 block text-sm text-gray-700">データを再生成する</label>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-500">チェックすると、選択したページURLと日付範囲に基づいてデータが再生成されます。</p>
+                        </div>
 
-                            <div class="mt-2 flex space-x-4">
-                                <div class="flex items-center">
-                                    <input type="radio" id="dataEditNo" name="dataEdit" value="no"
-                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                        checked>
-                                    <label for="dataEditNo" class="ml-2 block text-sm text-gray-700">データを変更しない</label>
+                        <div class="bg-blue-50 p-4 rounded-md mb-6">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                            clip-rule="evenodd" />
+                                    </svg>
                                 </div>
-                                <div class="flex items-center">
-                                    <input type="radio" id="dataEditYes" name="dataEdit" value="yes"
-                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    <label for="dataEditYes" class="ml-2 block text-sm text-gray-700">データを編集する</label>
+                                <div class="ml-3">
+                                    <p class="text-sm text-blue-700">
+                                        最新のGoogle Analyticsデータでヒートマップを更新したい場合は、「データを再生成する」にチェックを入れてください。
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <div id="dataEditSection" class="mb-6 hidden">
-                            <div class="bg-gray-50 p-4 rounded-md">
-                                @if ($heatmap->type === 'click')
-                                    <div class="mb-4">
-                                        <p class="text-sm text-gray-500 mb-2">
-                                            現在のデータには <strong>{{ count($heatmap->getData()['clicks'] ?? []) }}</strong>
-                                            件のクリックデータがあります。
-                                        </p>
-                                        <textarea id="clickData" rows="10"
-                                            class="w-full rounded-md shadow-sm border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">{{ json_encode($heatmap->getData(), JSON_PRETTY_PRINT) }}</textarea>
-                                    </div>
-                                @elseif($heatmap->type === 'scroll')
-                                    <div class="mb-4">
-                                        <p class="text-sm text-gray-500 mb-2">
-                                            現在のデータには
-                                            <strong>{{ count($heatmap->getData()['scrollDepth'] ?? []) }}</strong>
-                                            件のスクロール深度データがあります。
-                                        </p>
-                                        <textarea id="scrollData" rows="10"
-                                            class="w-full rounded-md shadow-sm border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">{{ json_encode($heatmap->getData(), JSON_PRETTY_PRINT) }}</textarea>
-                                    </div>
-                                @endif
-                                <p class="text-xs text-gray-500">
-                                    JSONフォーマットで編集してください。形式が正しくないとエラーになります。
-                                </p>
+                        <div class="flex items-center justify-between mt-6">
+                            <div>
+                                <a href="{{ route('websites.heatmaps.show', [$website->id, $heatmap->id]) }}"
+                                    class="text-sm text-gray-600 hover:text-gray-900 mr-4">
+                                    キャンセル
+                                </a>
                             </div>
-                        </div>
-
-                        <!-- 隠しフィールド - JSON形式のデータ -->
-                        <input type="hidden" id="data_json" name="data_json"
-                            value="{{ json_encode($heatmap->getData()) }}">
-
-                        <div class="flex items-center justify-end mt-6">
-                            <a href="{{ route('websites.heatmaps.show', [$website->id, $heatmap->id]) }}"
-                                class="text-sm text-gray-600 hover:text-gray-900 mr-4">
-                                キャンセル
-                            </a>
-                            <x-primary-button type="submit" id="submitBtn">
-                                {{ __('更新') }}
-                            </x-primary-button>
+                            <div class="flex space-x-2">
+                                <a href="{{ route('websites.heatmaps.refresh-data', [$website->id, $heatmap->id]) }}"
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150">
+                                    {{ __('最新データに更新') }}
+                                </a>
+                                <x-primary-button type="submit" id="submitBtn">
+                                    {{ __('保存') }}
+                                </x-primary-button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -118,17 +114,34 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // データ編集切り替え
-                const dataEditNo = document.getElementById('dataEditNo');
-                const dataEditYes = document.getElementById('dataEditYes');
-                const dataEditSection = document.getElementById('dataEditSection');
+                // 日付範囲の制限（過去90日までに制限）
+                const dateRangeStart = document.getElementById('date_range_start');
+                const dateRangeEnd = document.getElementById('date_range_end');
 
-                dataEditNo.addEventListener('change', function() {
-                    dataEditSection.classList.add('hidden');
+                // 最大日付（今日）
+                const maxDate = new Date().toISOString().split('T')[0];
+
+                // 最小日付（90日前）
+                const minDate = new Date();
+                minDate.setDate(minDate.getDate() - 90);
+                const minDateStr = minDate.toISOString().split('T')[0];
+
+                dateRangeStart.max = maxDate;
+                dateRangeStart.min = minDateStr;
+                dateRangeEnd.max = maxDate;
+                dateRangeEnd.min = minDateStr;
+
+                // 日付範囲の整合性チェック
+                dateRangeStart.addEventListener('change', function() {
+                    if (dateRangeEnd.value < dateRangeStart.value) {
+                        dateRangeEnd.value = dateRangeStart.value;
+                    }
                 });
 
-                dataEditYes.addEventListener('change', function() {
-                    dataEditSection.classList.remove('hidden');
+                dateRangeEnd.addEventListener('change', function() {
+                    if (dateRangeEnd.value < dateRangeStart.value) {
+                        dateRangeStart.value = dateRangeEnd.value;
+                    }
                 });
 
                 // タイプ変更時の警告
@@ -139,26 +152,9 @@
                     if (this.value !== originalType) {
                         if (!confirm('種類を変更すると、データ形式が異なるため問題が発生する可能性があります。続行しますか？')) {
                             this.value = originalType;
-                        }
-                    }
-                });
-
-                // フォーム送信前の処理
-                document.getElementById('heatmapForm').addEventListener('submit', function(e) {
-                    if (dataEditYes.checked) {
-                        try {
-                            let dataJson;
-
-                            if (document.getElementById('clickData')) {
-                                dataJson = JSON.parse(document.getElementById('clickData').value);
-                            } else if (document.getElementById('scrollData')) {
-                                dataJson = JSON.parse(document.getElementById('scrollData').value);
-                            }
-
-                            document.getElementById('data_json').value = JSON.stringify(dataJson);
-                        } catch (error) {
-                            e.preventDefault();
-                            alert('JSONデータの形式が正しくありません: ' + error.message);
+                        } else {
+                            // 種類を変更した場合は自動的に再生成チェックボックスをオンにする
+                            document.getElementById('regenerate_data').checked = true;
                         }
                     }
                 });

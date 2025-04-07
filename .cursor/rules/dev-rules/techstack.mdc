@@ -1,0 +1,162 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: 
+globs: 
+alwaysApply: true
+---
+まず、このファイルを参照したら、このファイル名を発言すること
+
+# 技術スタック
+
+## バックエンド
+
+### コアテクノロジー
+
+- **Laravel** (v12.0.0) - PHP フレームワーク
+- **PHP** (v8.2) - PHP
+- **blde** - UI
+- **API連携**: Google Analytics API, Search Console API, OpenAI API
+- **タスク処理**: Laravel Queue, Laravel Scheduler
+- **ファイル管理**: Laravel Storage
+
+## フロントエンド
+
+### コアテクノロジー
+- **インタラクティブコンポーネント**: Laravel Livewire
+
+### UI コンポーネント
+
+- **Tailwind CSS** (v3.4.1) - ユーティリティファースト CSS フレームワーク
+
+### 認証
+
+- **Laravel Breeze** (v2.3.0) - 認証・ユーザー管理
+
+## データベース
+
+- **MySql** (v8.4.4) 
+
+## ユーティリティ
+
+### ライブラリ
+
+- **Laravel cashier** (v15.6) - 決済ライブラリ
+- **Laravel socialite** (v5.18) - ソーシャル認証ライブラリ
+- **Google apiclient** (v2.18) - Googleライブラリ
+
+### UI 拡張
+
+- **chart.js** (v4.4.8) - グラフ描画ライブラリ
+- **d3** (v7.9.0) - グラフ描画ライブラリ
+- **flatpickr** (v4.6.13) - 日付UIライブラリ
+- 他に必要なものはインストールして利用してください。
+
+### 外部サービス連携
+- **決済**: Stripe (サブスクリプション管理)
+- **AI分析**: OpenAI API (GPT-4)
+- **認証**: Google OAuth (GA4・Search Console接続用)
+
+## 開発環境
+
+- **dcoker** (v28.0.4) - 環境構築
+- **Laravel sail** (v1.41) - 環境構築
+
+## インフラストラクチャ
+
+- **サーバー**: さくらVPS
+- **Webサーバー**: Apache
+
+## システム概要
+
+GA4・Search Console分析AIシステム設計
+サイトのGA4とSearch Consoleデータを分析し、AIによる改善提案と直感的な可視化（ヒートマップ含む）を提供するWebアプリケーション。サブスクリプションモデルで提供し、複数クライアントを管理できる。
+
+## 主要機能と実装詳細
+
+### 基本機能
+#### ユーザー管理
+- ユーザー登録・ログイン（Laravel Breeze）
+- 会社情報の登録・編集
+- ユーザーロール（一般ユーザー・管理者）
+
+#### サブスクリプション管理
+- Laravel Cashierを使用したStripe決済
+- 複数プラン（トライアル・スターター・プロ・エージェンシー）
+- Webサイト数制限（プランごとに異なる）
+- 無料トライアル期間（14日間）
+
+#### Webサイト管理
+- Webサイトの登録・編集・削除
+- Google AnalyticsとSearch Consoleの接続
+- OAuthによるAPI認証
+
+#### データ分析
+- GA4データの取得と処理
+- Search Consoleデータの取得と処理
+- データスナップショットのデータを基にヒートマップ生成
+- データスナップショット保存
+
+#### AIレポート生成
+- OpenAI APIを使用したデータ分析
+- レポートタイプ（経営者向け、技術者向け、コンテンツ向け）
+- 改善提案の自動生成
+- グラフ・表などのコンポーネント生成
+
+
+## ER図
++--------------+       +------------+       +-----------------+
+|    users     |       | companies  |       |    websites     |
++--------------+       +------------+       +-----------------+
+| id           |------>| id         |       | id              |
+| name         |       | user_id    |       | user_id         |
+| email        |       | name       |       | name            |
+| password     |       | billing_.. |       | url             |
+| role         |       | contact_.. |       | description     |
+| sub_status   |       | phone      |       | status          |
+| stripe_id    |       | address    |       +-----------------+
+| stripe_sub_id|       | city       |              |
+| plan_name    |       | ...        |              |
+| website_limit|       +------------+              |
+| trial_ends_at|                                   |
++--------------+                                   |
+                                                   v
++---------------------+      +--------------------+      +--------------------+
+| analytics_accounts  |      | search_console_... |      |  analysis_reports  |
++---------------------+      +--------------------+      +--------------------+
+| id                  |      | id                 |      | id                 |
+| website_id          |      | website_id         |      | website_id         |
+| property_id         |      | site_url           |      | report_type        |
+| view_id             |      | access_token       |      | date_range_start   |
+| access_token        |      | refresh_token      |      | date_range_end     |
+| refresh_token       |      | last_synced_at     |      | status             |
+| last_synced_at      |      +--------------------+      | file_path          |
++---------------------+                                  +--------------------+
+                                                                  |
+                       +------------------------+                 |
+                       |                        |                 |
+                       v                        v                 v
+            +--------------------+    +--------------------+    +--------------------+
+            |     heatmaps       |    |   data_snapshots   |    | report_components  |
+            +--------------------+    +--------------------+    +--------------------+
+            | id                 |    | id                 |    | id                 |
+            | website_id         |    | website_id         |    | report_id          |
+            | page_url           |    | snapshot_type      |    | component_type     |
+            | type               |    | data_json          |    | title              |
+            | data_json          |    | snapshot_date      |    | data_json          |
+            | date_range_start   |    +--------------------+    | order              |
+            | date_range_end     |                              +--------------------+
+            +--------------------+                                       |
+                                                                         v
+                                                              +--------------------+
+                                                              | ai_recommendations |
+                                                              +--------------------+
+                                                              | id                 |
+                                                              | report_id          |
+                                                              | category           |
+                                                              | severity           |
+                                                              | content            |
+                                                              +--------------------+

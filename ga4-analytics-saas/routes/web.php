@@ -83,10 +83,8 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
 
     // ヒートマップ管理
     Route::resource('websites.heatmaps', HeatmapController::class);
-    // ヒートマップデータのアップロード処理
-    Route::post('/heatmaps/upload-data', [HeatmapController::class, 'uploadData'])->name('heatmaps.upload-data');
-    // スクロールデータのアップロード処理
-    Route::post('/heatmaps/upload-scroll-data', [HeatmapController::class, 'uploadScrollData'])->name('heatmaps.upload-scroll-data');
+    // ヒートマップデータの更新処理
+    Route::get('/websites/{website}/heatmaps/{heatmap}/refresh-data', [HeatmapController::class, 'refreshData'])->name('websites.heatmaps.refresh-data');
 });
 
 // Stripe Webhook

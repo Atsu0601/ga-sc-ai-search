@@ -2,10 +2,10 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('ヒートマップ詳細') }}
+                {{ $types[$heatmap->type] ?? 'ヒートマップ詳細' }}
             </h2>
             <div class="flex space-x-2">
-                <a href="{{ route('websites.heatmaps.edit', [$website->id, $heatmap->id]) }}"
+                <a href="{{ route('websites.heatmaps.edit', [$website, $heatmap]) }}"
                     class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -14,7 +14,7 @@
                     </svg>
                     {{ __('編集') }}
                 </a>
-                <form action="{{ route('websites.heatmaps.destroy', [$website->id, $heatmap->id]) }}" method="POST"
+                <form action="{{ route('websites.heatmaps.destroy', [$website, $heatmap]) }}" method="POST"
                     onsubmit="return confirm('本当に削除しますか？');">
                     @csrf
                     @method('DELETE')
@@ -61,20 +61,18 @@
                                 <div class="mb-4">
                                     <span class="text-sm font-medium text-gray-500">種類:</span>
                                     <span class="block mt-1 text-sm text-gray-900">
-                                        @php
-                                            $typeLabels = \App\Models\Heatmap::getTypes();
-                                            $typeLabel = $typeLabels[$heatmap->type] ?? $heatmap->type;
-                                        @endphp
                                         <span
                                             class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                            {{ $typeLabel }}
+                                            {{ $types[$heatmap->type] ?? $heatmap->type }}
                                         </span>
                                     </span>
                                 </div>
                                 <div class="mb-4">
                                     <span class="text-sm font-medium text-gray-500">期間:</span>
-                                    <span
-                                        class="block mt-1 text-sm text-gray-900">{{ $heatmap->getDateRangeText() }}</span>
+                                    <span class="block mt-1 text-sm text-gray-900">
+                                        {{ $heatmap->date_range_start->format('Y/m/d') }} 〜
+                                        {{ $heatmap->date_range_end->format('Y/m/d') }}
+                                    </span>
                                 </div>
                                 <div class="mb-4">
                                     <span class="text-sm font-medium text-gray-500">作成日:</span>
