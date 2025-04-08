@@ -59,6 +59,8 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
         ->name('google.analytics.redirect');
     Route::get('/google/analytics/callback', [GoogleApiController::class, 'handleGoogleAnalyticsCallback'])
         ->name('google.analytics.callback');
+    Route::post('/google/analytics/select-property/{website}', [GoogleApiController::class, 'handlePropertySelection'])
+        ->name('google.analytics.select-property');
 
     // Search Console
     Route::get('/google/searchconsole/redirect/{website}', [GoogleApiController::class, 'redirectToSearchConsole'])

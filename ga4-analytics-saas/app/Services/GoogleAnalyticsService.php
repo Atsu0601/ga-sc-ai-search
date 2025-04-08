@@ -5,8 +5,12 @@ namespace App\Services;
 
 use App\Models\AnalyticsAccount;
 use Carbon\Carbon;
-use Google_Client;
-use Google_Service_AnalyticsData;
+use Google\Client;
+use Google\Analytics\Data\V1beta\AnalyticsDataClient;
+use Google\Analytics\Data\V1beta\DateRange;
+use Google\Analytics\Data\V1beta\Dimension;
+use Google\Analytics\Data\V1beta\Metric;
+use Google\Analytics\Data\V1beta\RunReportRequest;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -19,9 +23,9 @@ class GoogleAnalyticsService
     {
         try {
             // Google Clientの初期化
-            $client = new Google_Client();
+            $client = new Client();
             $client->setAuthConfig(config('services.google.client_secret_path'));
-            $client->addScope(Google_Service_AnalyticsData::ANALYTICS_READONLY);
+            $client->addScope('https://www.googleapis.com/auth/analytics.readonly');
 
             // アクセストークンの設定
             $client->setAccessToken($account->access_token);
@@ -40,7 +44,9 @@ class GoogleAnalyticsService
             }
 
             // Analytics Data APIサービスの初期化
-            $analytics = new Google_Service_AnalyticsData($client);
+            $analytics = new AnalyticsDataClient([
+                'credentials' => $client->getAccessToken()
+            ]);
 
             // データ取得処理（実際のAPIリクエストはGA4 APIに依存）
 

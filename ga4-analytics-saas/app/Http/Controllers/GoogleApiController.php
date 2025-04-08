@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
 
 class GoogleApiController extends Controller
 {
@@ -30,8 +31,12 @@ class GoogleApiController extends Controller
         // セッションにウェブサイトIDを保存（コールバックで使用）
         session(['website_id' => $website->id]);
 
-        // GA4のスコープ
-        $scope = urlencode('https://www.googleapis.com/auth/analytics.readonly');
+        // GA4のスコープ（Analytics Admin APIのスコープを追加）
+        $scopes = [
+            'https://www.googleapis.com/auth/analytics.readonly',
+            'https://www.googleapis.com/auth/analytics.edit'
+        ];
+        $scope = urlencode(implode(' ', $scopes));
 
         // OAuth2.0認証URLを生成
         $url = "https://accounts.google.com/o/oauth2/auth?";
@@ -53,7 +58,7 @@ class GoogleApiController extends Controller
     {
         if ($request->has('error')) {
             return redirect()->route('websites.index')
-                             ->with('error', 'Google Analytics認証がキャンセルされました。');
+                ->with('error', 'Google Analytics認証がキャンセルされました。');
         }
 
         $code = $request->code;
@@ -61,7 +66,7 @@ class GoogleApiController extends Controller
 
         if (!$code || !$websiteId) {
             return redirect()->route('websites.index')
-                             ->with('error', '認証情報が不足しています。');
+                ->with('error', '認証情報が不足しています。');
         }
 
         $website = Website::findOrFail($websiteId);
@@ -84,17 +89,54 @@ class GoogleApiController extends Controller
 
         if (!$response->successful()) {
             return redirect()->route('websites.show', $website->id)
-                             ->with('error', 'アクセストークンの取得に失敗しました。');
+                ->with('error', 'アクセストークンの取得に失敗しました。');
         }
 
         $tokenData = $response->json();
 
+        // 利用可能なプロパティを取得
+        $properties = $this->getAvailableGA4Properties($tokenData['access_token']);
+
+        // デバッグ情報をログに記録
+        Log::info('GA4 properties fetched', [
+            'properties_count' => count($properties),
+            'properties' => $properties,
+            'website_id' => $website->id
+        ]);
+
+        if (empty($properties)) {
+            return redirect()->route('websites.show', $website->id)
+                ->with('error', '利用可能なGA4プロパティが見つかりませんでした。');
+        }
+
+        // プロパティ選択画面を表示
+        return view('websites.select-ga4-property', [
+            'website' => $website,
+            'properties' => $properties,
+            'accessToken' => $tokenData['access_token'],
+            'refreshToken' => $tokenData['refresh_token'] ?? ''
+        ]);
+    }
+
+    /**
+     * GA4プロパティの選択を処理
+     */
+    public function handlePropertySelection(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+
+        $request->validate([
+            'property_id' => 'required|string',
+            'access_token' => 'required|string',
+            'refresh_token' => 'required|string',
+        ]);
+
         // GA4アカウントを保存（既存の場合は更新）
         $analytics = $website->analyticsAccount ?? new AnalyticsAccount();
         $analytics->website_id = $website->id;
-        $analytics->property_id = 'GA4_PROPERTY_ID'; // 実際はAPI呼び出しで取得
-        $analytics->access_token = $tokenData['access_token'];
-        $analytics->refresh_token = $tokenData['refresh_token'] ?? '';
+        $analytics->property_id = $request->property_id;
+        $analytics->access_token = $request->access_token;
+        $analytics->refresh_token = $request->refresh_token;
         $analytics->save();
 
         // ウェブサイトのステータスを更新
@@ -104,7 +146,83 @@ class GoogleApiController extends Controller
         }
 
         return redirect()->route('websites.show', $website->id)
-                         ->with('success', 'Google Analytics連携が完了しました。');
+            ->with('success', 'Google Analytics連携が完了しました。');
+    }
+
+    /**
+     * 利用可能なGA4プロパティを取得
+     */
+    private function getAvailableGA4Properties(string $accessToken): array
+    {
+        try {
+            $properties = [];
+
+            // Analytics Admin APIを使用してアカウントリストを取得
+            Log::info('Fetching GA4 accounts', ['access_token' => substr($accessToken, 0, 10) . '...']);
+
+            $accountResponse = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken
+            ])->get('https://analyticsadmin.googleapis.com/v1beta/accounts');
+
+            if (!$accountResponse->successful()) {
+                Log::error('GA4 accounts fetch failed', [
+                    'status' => $accountResponse->status(),
+                    'body' => $accountResponse->body()
+                ]);
+                return [];
+            }
+
+            $accounts = $accountResponse->json()['accounts'] ?? [];
+            Log::info('GA4 accounts fetched', ['count' => count($accounts)]);
+
+            // 各アカウントのプロパティを取得
+            foreach ($accounts as $account) {
+                $accountId = str_replace('accounts/', '', $account['name']);
+                Log::info('Fetching properties for account', ['account_id' => $accountId]);
+
+                $propertyResponse = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $accessToken
+                ])->get("https://analyticsadmin.googleapis.com/v1beta/properties", [
+                    'filter' => "parent:accounts/{$accountId}"
+                ]);
+
+                if ($propertyResponse->successful()) {
+                    $accountProperties = $propertyResponse->json()['properties'] ?? [];
+                    Log::info('Properties fetched for account', [
+                        'account_id' => $accountId,
+                        'properties_count' => count($accountProperties)
+                    ]);
+
+                    foreach ($accountProperties as $property) {
+                        $properties[] = [
+                            'id' => str_replace('properties/', '', $property['name']),
+                            'displayName' => $property['displayName'] ?? '',
+                            'websiteUrl' => $property['websiteUrl'] ?? null,
+                            'createTime' => $property['createTime'] ?? null,
+                            'account' => [
+                                'id' => $accountId,
+                                'name' => $account['displayName'] ?? ''
+                            ]
+                        ];
+                    }
+                } else {
+                    Log::error('Failed to fetch properties for account', [
+                        'account_id' => $accountId,
+                        'status' => $propertyResponse->status(),
+                        'body' => $propertyResponse->body()
+                    ]);
+                }
+            }
+
+            Log::info('All GA4 properties fetched', ['total_properties' => count($properties)]);
+            return $properties;
+        } catch (\Exception $e) {
+            Log::error('Error fetching GA4 properties', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return [];
+        }
     }
 
     /**
@@ -145,7 +263,7 @@ class GoogleApiController extends Controller
     {
         if ($request->has('error')) {
             return redirect()->route('websites.index')
-                             ->with('error', 'Search Console認証がキャンセルされました。');
+                ->with('error', 'Search Console認証がキャンセルされました。');
         }
 
         $code = $request->code;
@@ -153,7 +271,7 @@ class GoogleApiController extends Controller
 
         if (!$code || !$websiteId) {
             return redirect()->route('websites.index')
-                             ->with('error', '認証情報が不足しています。');
+                ->with('error', '認証情報が不足しています。');
         }
 
         $website = Website::findOrFail($websiteId);
@@ -176,7 +294,7 @@ class GoogleApiController extends Controller
 
         if (!$response->successful()) {
             return redirect()->route('websites.show', $website->id)
-                             ->with('error', 'アクセストークンの取得に失敗しました。');
+                ->with('error', 'アクセストークンの取得に失敗しました。');
         }
 
         $tokenData = $response->json();
@@ -196,6 +314,6 @@ class GoogleApiController extends Controller
         }
 
         return redirect()->route('websites.show', $website->id)
-                         ->with('success', 'Search Console連携が完了しました。');
+            ->with('success', 'Search Console連携が完了しました。');
     }
 }
