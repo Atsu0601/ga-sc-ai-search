@@ -52,28 +52,52 @@ class DataSnapshotService
      */
     public function createAnalyticsSnapshot(Website $website, Carbon $date)
     {
-        // API接続がない場合はスキップ
-        if (!$website->analyticsAccount) {
-            return null;
-        }
-
-        // 既存のスナップショットを検索
-        $existingSnapshot = DataSnapshot::where('website_id', $website->id)
-            ->where('snapshot_type', 'analytics')
-            ->where('snapshot_date', $date->format('Y-m-d'))
-            ->first();
-
-        if ($existingSnapshot) {
-            return $existingSnapshot;
-        }
-
-        // 対象の日のデータを取得
-        $startDate = $date->copy()->startOfDay();
-        $endDate = $date->copy()->endOfDay();
-
         try {
-            // 本番環境ではGoogleAnalyticsServiceから実際のデータを取得
-            // 開発用にサンプルデータを使用
+            // API接続がない場合はスキップ
+            if (!$website->analyticsAccount) {
+                Log::info('Analytics接続が設定されていないため、スナップショット作成をスキップします', [
+                    'website_id' => $website->id
+                ]);
+                return null;
+            }
+
+            // 既存のスナップショットを検索
+            $existingSnapshot = DataSnapshot::where('website_id', $website->id)
+                ->where('snapshot_type', 'analytics')
+                ->where('snapshot_date', $date->format('Y-m-d'))
+                ->first();
+
+            if ($existingSnapshot) {
+                // 既存のデータを新しい構造に変換
+                if (!isset($existingSnapshot->data_json['metrics']['users'])) {
+                    $existingData = $existingSnapshot->data_json;
+                    $newData = $this->getSampleAnalyticsData($date);
+                    $existingSnapshot->data_json = $newData;
+                    $existingSnapshot->save();
+
+                    Log::info('既存のスナップショットのデータ構造を更新しました', [
+                        'website_id' => $website->id,
+                        'snapshot_id' => $existingSnapshot->id,
+                        'date' => $date->format('Y-m-d')
+                    ]);
+                }
+                return $existingSnapshot;
+            }
+
+            // 対象の日のデータを取得
+            $startDate = $date->copy()->startOfDay();
+            $endDate = $date->copy()->endOfDay();
+
+            Log::info('GA4データの取得を開始します', [
+                'website_id' => $website->id,
+                'analytics_account_id' => $website->analyticsAccount->id,
+                'date_range' => [
+                    'start' => $startDate->format('Y-m-d'),
+                    'end' => $endDate->format('Y-m-d')
+                ]
+            ]);
+
+            // 開発環境ではサンプルデータを使用
             $data = $this->getSampleAnalyticsData($date);
 
             // スナップショットを保存
@@ -84,14 +108,27 @@ class DataSnapshotService
             $snapshot->snapshot_date = $date;
             $snapshot->save();
 
-            return $snapshot;
-        } catch (\Exception $e) {
-            Log::error('Analyticsスナップショット作成エラー: ' . $e->getMessage(), [
+            Log::info('スナップショットを作成しました', [
                 'website_id' => $website->id,
+                'snapshot_id' => $snapshot->id,
                 'date' => $date->format('Y-m-d'),
+                'data_structure' => [
+                    'has_metrics' => isset($data['metrics']),
+                    'has_dimensions' => isset($data['dimensions']),
+                    'metrics_keys' => array_keys($data['metrics']),
+                ]
             ]);
 
-            throw $e;
+            return $snapshot;
+        } catch (\Exception $e) {
+            Log::error('Analyticsスナップショット作成エラー', [
+                'website_id' => $website->id,
+                'date' => $date->format('Y-m-d'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw new \Exception('データスナップショットの作成中にエラーが発生しました: ' . $e->getMessage());
         }
     }
 
@@ -228,8 +265,14 @@ class DataSnapshotService
 
         // キーワード
         $keywords = [
-            'GA4 分析ツール', 'Search Console 連携', 'AI レポート', 'ウェブ アクセス 解析',
-            'ウェブサイト パフォーマンス', 'SEO 改善', 'Google データ 分析', 'アクセス 解析 レポート',
+            'GA4 分析ツール',
+            'Search Console 連携',
+            'AI レポート',
+            'ウェブ アクセス 解析',
+            'ウェブサイト パフォーマンス',
+            'SEO 改善',
+            'Google データ 分析',
+            'アクセス 解析 レポート',
         ];
 
         shuffle($keywords);
