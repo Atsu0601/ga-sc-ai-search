@@ -131,22 +131,41 @@ class GoogleApiController extends Controller
             'refresh_token' => 'required|string',
         ]);
 
-        // GA4アカウントを保存（既存の場合は更新）
-        $analytics = $website->analyticsAccount ?? new AnalyticsAccount();
-        $analytics->website_id = $website->id;
-        $analytics->property_id = $request->property_id;
-        $analytics->access_token = $request->access_token;
-        $analytics->refresh_token = $request->refresh_token;
-        $analytics->save();
+        try {
+            // GA4アカウントを保存（既存の場合は更新）
+            $analytics = $website->analyticsAccount ?? new AnalyticsAccount();
+            $analytics->website_id = $website->id;
+            $analytics->property_id = $request->property_id;
+            $analytics->access_token = $request->access_token;
+            $analytics->refresh_token = $request->refresh_token;
+            $analytics->last_synced_at = now(); // 最終同期日時を更新
+            $analytics->save();
 
-        // ウェブサイトのステータスを更新
-        if ($website->searchConsoleAccount) {
-            $website->status = 'active';
-            $website->save();
+            // ウェブサイトのステータスを更新
+            if ($website->searchConsoleAccount) {
+                $website->status = 'active';
+                $website->save();
+            }
+
+            Log::info('Google Analytics連携完了', [
+                'website_id' => $website->id,
+                'property_id' => $request->property_id,
+                'last_synced_at' => $analytics->last_synced_at
+            ]);
+
+            return redirect()->route('websites.show', $website->id)
+                ->with('success', 'Google Analytics連携が完了しました。');
+        } catch (\Exception $e) {
+            Log::error('Google Analytics連携エラー', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'website_id' => $website->id,
+                'property_id' => $request->property_id
+            ]);
+
+            return redirect()->route('websites.show', $website->id)
+                ->with('error', 'Google Analytics連携中にエラーが発生しました: ' . $e->getMessage());
         }
-
-        return redirect()->route('websites.show', $website->id)
-            ->with('success', 'Google Analytics連携が完了しました。');
     }
 
     /**
@@ -313,7 +332,175 @@ class GoogleApiController extends Controller
             $website->save();
         }
 
+        // 利用可能なSearch Consoleプロパティを取得
+        $properties = $this->getAvailableSearchConsoleProperties($tokenData['access_token']);
+
+        // プロパティ選択画面を表示
+        return view('websites.select-search-console-property', [
+            'website' => $website,
+            'properties' => $properties,
+            'accessToken' => $tokenData['access_token'],
+            'refreshToken' => $tokenData['refresh_token'] ?? ''
+        ]);
+    }
+
+    /**
+     * Search Console接続を解除
+     *
+     * @param Website $website
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function disconnectSearchConsole(Website $website)
+    {
+        $this->authorize('update', $website);
+
+        if ($website->searchConsoleAccount) {
+            $website->searchConsoleAccount->delete();
+        }
+
         return redirect()->route('websites.show', $website->id)
-            ->with('success', 'Search Console連携が完了しました。');
+            ->with('success', 'Search Consoleの接続を解除しました。');
+    }
+
+    /**
+     * 利用可能なSearch Consoleプロパティを取得
+     */
+    private function getAvailableSearchConsoleProperties(string $accessToken): array
+    {
+        try {
+            // Search Console APIを使用してサイトリストを取得
+            Log::info('Fetching Search Console sites', ['access_token' => substr($accessToken, 0, 10) . '...']);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken
+            ])->get('https://www.googleapis.com/webmasters/v3/sites');
+
+            if (!$response->successful()) {
+                Log::error('Search Console sites fetch failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                return [];
+            }
+
+            $sites = $response->json()['siteEntry'] ?? [];
+
+            $properties = [];
+            foreach ($sites as $site) {
+                $properties[] = [
+                    'siteUrl' => $site['siteUrl'],
+                    'permissionLevel' => $site['permissionLevel'] ?? 'unknown'
+                ];
+            }
+
+            Log::info('Search Console properties fetched', ['count' => count($properties)]);
+            return $properties;
+        } catch (\Exception $e) {
+            Log::error('Error fetching Search Console properties', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Search Consoleプロパティの選択を処理
+     */
+    public function handleSearchConsolePropertySelection(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+
+        $request->validate([
+            'site_url' => 'required|string',
+            'access_token' => 'required|string',
+            'refresh_token' => 'required|string',
+        ]);
+
+        try {
+            // Search Consoleから実データを取得
+            $endDate = now();
+            $startDate = $endDate->copy()->subDays(30);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $request->access_token
+            ])->post('https://www.googleapis.com/webmasters/v3/sites/' . urlencode($request->site_url) . '/searchAnalytics/query', [
+                'startDate' => $startDate->format('Y-m-d'),
+                'endDate' => $endDate->format('Y-m-d'),
+                'dimensions' => ['query', 'page'],
+                'rowLimit' => 1000
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Search Consoleデータ取得エラー', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                    'site_url' => $request->site_url
+                ]);
+                throw new \Exception('Search Consoleからのデータ取得に失敗しました');
+            }
+
+            // Search Consoleアカウントを保存（既存の場合は更新）
+            $searchConsole = $website->searchConsoleAccount ?? new SearchConsoleAccount();
+            $searchConsole->website_id = $website->id;
+            $searchConsole->site_url = $request->site_url;
+            $searchConsole->access_token = $request->access_token;
+            $searchConsole->refresh_token = $request->refresh_token;
+            $searchConsole->last_synced_at = now(); // 最終同期日時を更新
+            $searchConsole->save();
+
+            // ウェブサイトのステータスを更新
+            if ($website->analyticsAccount) {
+                $website->status = 'active';
+                $website->save();
+            }
+
+            Log::info('Search Console連携完了', [
+                'website_id' => $website->id,
+                'site_url' => $request->site_url,
+                'last_synced_at' => $searchConsole->last_synced_at
+            ]);
+
+            return redirect()->route('websites.show', $website->id)
+                ->with('success', 'Search Console連携が完了し、データの同期が完了しました。');
+        } catch (\Exception $e) {
+            Log::error('Search Console連携エラー', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'website_id' => $website->id,
+                'site_url' => $request->site_url
+            ]);
+
+            return redirect()->route('websites.show', $website->id)
+                ->with('error', 'Search Console連携中にエラーが発生しました: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Google Analytics接続を解除
+     *
+     * @param Website $website
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function disconnectAnalytics(Website $website)
+    {
+        $this->authorize('update', $website);
+
+        if ($website->analyticsAccount) {
+            $website->analyticsAccount->delete();
+
+            // ウェブサイトのステータスを更新
+            if (!$website->searchConsoleAccount) {
+                $website->status = 'inactive';
+                $website->save();
+            }
+
+            Log::info('Google Analytics接続を解除しました', [
+                'website_id' => $website->id
+            ]);
+        }
+
+        return redirect()->route('websites.show', $website->id)
+            ->with('success', 'Google Analyticsの接続を解除しました。');
     }
 }

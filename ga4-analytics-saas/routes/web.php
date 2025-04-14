@@ -61,12 +61,18 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
         ->name('google.analytics.callback');
     Route::post('/google/analytics/select-property/{website}', [GoogleApiController::class, 'handlePropertySelection'])
         ->name('google.analytics.select-property');
+    Route::delete('/google/analytics/disconnect/{website}', [GoogleApiController::class, 'disconnectAnalytics'])
+        ->name('google.analytics.disconnect');
 
     // Search Console
     Route::get('/google/searchconsole/redirect/{website}', [GoogleApiController::class, 'redirectToSearchConsole'])
         ->name('google.searchconsole.redirect');
     Route::get('/google/searchconsole/callback', [GoogleApiController::class, 'handleSearchConsoleCallback'])
         ->name('google.searchconsole.callback');
+    Route::delete('/google/searchconsole/disconnect/{website}', [GoogleApiController::class, 'disconnectSearchConsole'])
+        ->name('google.searchconsole.disconnect');
+    Route::post('/google/searchconsole/select-property/{website}', [GoogleApiController::class, 'handleSearchConsolePropertySelection'])
+        ->name('google.searchconsole.select-property');
 
     // レポート一覧・詳細
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

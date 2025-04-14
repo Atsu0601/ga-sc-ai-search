@@ -120,14 +120,18 @@
                                     </p>
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="flex space-x-2">
                                     <a href="{{ route('google.analytics.redirect', $website->id) }}"
-                                        class="text-sm text-blue-600 hover:underline">再接続</a>
-                                    <form method="POST" action="#" class="inline">
+                                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                                        データ取得
+                                    </a>
+                                    <form action="{{ route('google.analytics.disconnect', $website->id) }}"
+                                        method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-sm text-red-600 hover:underline"
-                                            onclick="return confirm('本当に接続を解除しますか？')">
+                                        <button type="submit"
+                                            class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500"
+                                            onclick="return confirm('Google Analyticsの接続を解除してもよろしいですか？')">
                                             接続解除
                                         </button>
                                     </form>
@@ -138,8 +142,8 @@
                                 </p>
 
                                 <a href="{{ route('google.analytics.redirect', $website->id) }}"
-                                    class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
-                                    Google Analyticsと接続する
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500">
+                                    Google Analyticsと接続
                                 </a>
                             @endif
                         </div>
@@ -149,7 +153,7 @@
                             <div class="flex justify-between items-center mb-4">
                                 <h4 class="font-medium">Google Search Console</h4>
 
-                                @if ($website->searchConsoleAccount)
+                                @if ($website->searchConsoleAccount && $website->searchConsoleAccount->site_url)
                                     <span
                                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                         接続済み
@@ -162,38 +166,36 @@
                                 @endif
                             </div>
 
-                            @if ($website->searchConsoleAccount)
-                                <div class="mb-4">
-                                    <p class="text-sm text-gray-600">サイトURL</p>
-                                    <p class="font-medium">{{ $website->searchConsoleAccount->site_url }}</p>
-                                </div>
-
-                                <div class="mb-4">
-                                    <p class="text-sm text-gray-600">最終同期日時</p>
-                                    <p class="font-medium">
-                                        {{ $website->searchConsoleAccount->last_synced_at ? $website->searchConsoleAccount->last_synced_at->format('Y年m月d日 H:i') : '未同期' }}
+                            @if ($website->searchConsoleAccount && $website->searchConsoleAccount->site_url)
+                                <div class="text-sm text-gray-600 mb-4">
+                                    <p><span class="font-medium">サイトURL:</span>
+                                        {{ $website->searchConsoleAccount->site_url }}</p>
+                                    <p><span class="font-medium">最終同期:</span>
+                                        {{ $website->searchConsoleAccount->last_synced_at ? $website->searchConsoleAccount->last_synced_at->format('Y/m/d H:i') : '未同期' }}
                                     </p>
                                 </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <a href="{{ route('google.searchconsole.redirect', $website->id) }}"
-                                        class="text-sm text-blue-600 hover:underline">再接続</a>
-                                    <form method="POST" action="#" class="inline">
+                                <div class="flex space-x-2">
+                                    <a href="{{ route('snapshots.create', $website->id) }}"
+                                        class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
+                                        データ取得
+                                    </a>
+                                    <form action="{{ route('google.searchconsole.disconnect', $website->id) }}"
+                                        method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-sm text-red-600 hover:underline"
-                                            onclick="return confirm('本当に接続を解除しますか？')">
+                                        <button type="submit"
+                                            class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-500"
+                                            onclick="return confirm('Search Consoleの接続を解除してもよろしいですか？')">
                                             接続解除
                                         </button>
                                     </form>
                                 </div>
                             @else
                                 <p class="text-sm text-gray-600 mb-4">
-                                    Search Consoleと接続することで、検索エンジンからのトラフィックデータを取得できます。
+                                    サイトのSearch Consoleデータを取得するには、Google Search Consoleとの接続が必要です。
                                 </p>
-
                                 <a href="{{ route('google.searchconsole.redirect', $website->id) }}"
-                                    class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
+                                    class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-500">
                                     Search Consoleと接続する
                                 </a>
                             @endif
