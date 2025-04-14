@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
@@ -24,8 +25,8 @@ class ReportController extends Controller
 
         // レポートを取得
         $reports = AnalysisReport::whereIn('website_id', $websiteIds)
-                                ->orderByDesc('created_at')
-                                ->paginate(10);
+            ->orderByDesc('created_at')
+            ->paginate(10);
 
         return view('reports.index', compact('reports'));
     }
@@ -41,7 +42,7 @@ class ReportController extends Controller
         // サイトがアクティブでない場合はリダイレクト
         if ($website->status !== 'active') {
             return redirect()->route('websites.show', $website->id)
-                             ->with('error', 'レポート作成にはGA4とSearch Consoleの接続が必要です。');
+                ->with('error', 'レポート作成にはGA4とSearch Consoleの接続が必要です。');
         }
 
         // GET パラメータからレポートタイプを取得
@@ -55,19 +56,26 @@ class ReportController extends Controller
      */
     public function store(Request $request, Website $website)
     {
+        $validated = $request->validate([
+            'report_type' => 'required|in:business,technical,content',
+            'date_range' => 'required|string',
+        ]);
+
+        // デバッグ用のログ出力
+        Log::info('レポート作成リクエスト', [
+            'website_id' => $website->id,
+            'report_type' => $request->report_type,
+            'date_range' => $request->date_range
+        ]);
+
         // 所有者確認
         $this->authorize('view', $website);
 
         // サイトがアクティブでない場合はリダイレクト
         if ($website->status !== 'active') {
             return redirect()->route('websites.show', $website->id)
-                             ->with('error', 'レポート作成にはGA4とSearch Consoleの接続が必要です。');
+                ->with('error', 'レポート作成にはGA4とSearch Consoleの接続が必要です。');
         }
-
-        $request->validate([
-            'report_type' => 'required|in:executive,technical,content',
-            'date_range' => 'required|string',
-        ]);
 
         // 日付範囲を解析
         $dateRange = explode(' - ', $request->date_range);
@@ -86,8 +94,8 @@ class ReportController extends Controller
         // バックグラウンドジョブをディスパッチ
         GenerateAnalysisReport::dispatch($report);
 
-        return redirect()->route('reports.show', $report->id)
-                         ->with('success', 'レポート生成を開始しました。処理が完了するまでお待ちください。');
+        return redirect()->route('reports.show', ['website' => $website->id, 'report' => $report->id])
+            ->with('success', 'レポートの生成を開始しました。');
     }
 
     /**
@@ -118,7 +126,7 @@ class ReportController extends Controller
         // レポートがまだ処理中または失敗した場合はリダイレクト
         if ($report->status !== 'completed') {
             return redirect()->route('reports.show', $report->id)
-                             ->with('error', 'レポートの処理が完了していないためダウンロードできません。');
+                ->with('error', 'レポートの処理が完了していないためダウンロードできません。');
         }
 
         // PDFが生成済みの場合
@@ -127,7 +135,7 @@ class ReportController extends Controller
         }
 
         return redirect()->route('reports.show', $report->id)
-                         ->with('error', 'PDFファイルが見つかりません。');
+            ->with('error', 'PDFファイルが見つかりません。');
     }
 
     /**
@@ -142,6 +150,6 @@ class ReportController extends Controller
         $report->delete();
 
         return redirect()->route('reports.index')
-                         ->with('success', 'レポートを削除しました。');
+            ->with('success', 'レポートを削除しました。');
     }
 }
