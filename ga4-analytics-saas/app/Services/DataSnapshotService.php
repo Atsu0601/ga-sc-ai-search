@@ -6,6 +6,7 @@ use App\Models\DataSnapshot;
 use App\Models\Website;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Models\AnalysisReport;
 
 class DataSnapshotService
 {
@@ -305,6 +306,15 @@ class DataSnapshotService
                 ['page' => '/about', 'clicks' => round($clicks * 0.1)],
                 ['page' => '/contact', 'clicks' => round($clicks * 0.1)],
             ],
+        ];
+    }
+
+    public function createSnapshot(AnalysisReport $report)
+    {
+        // レポートデータからスナップショットを作成するロジック
+        return [
+            'analytics' => $report->data_json['analytics'] ?? null,
+            'search_console' => $report->data_json['search_console'] ?? null,
         ];
     }
 }

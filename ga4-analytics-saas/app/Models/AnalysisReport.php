@@ -23,6 +23,7 @@ class AnalysisReport extends Model
         'date_range_end',
         'status',
         'file_path',
+        'data_json'
     ];
 
     /**
@@ -31,9 +32,15 @@ class AnalysisReport extends Model
      * @var array
      */
     protected $casts = [
-        'date_range_start' => 'date',
-        'date_range_end' => 'date',
+        'date_range_start' => 'datetime',
+        'date_range_end' => 'datetime',
+        'data_json' => 'array'
     ];
+
+    // ステータス定数
+    const STATUS_PROCESSING = 'processing';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_FAILED = 'failed';
 
     /**
      * ウェブサイトとのリレーション
@@ -60,75 +67,52 @@ class AnalysisReport extends Model
     }
 
     /**
-     * レポートタイプを日本語で取得
+     * レポートタイプの日本語表示を取得
      */
     public function getReportTypeJapaneseAttribute(): string
     {
         return [
-            'executive' => '経営者向け',
+            'business' => '経営者向け',
             'technical' => '技術者向け',
-            'content' => 'コンテンツ向け',
-        ][$this->report_type] ?? 'その他';
+            'content' => 'コンテンツ向け'
+        ][$this->report_type] ?? $this->report_type;
     }
 
     /**
-     * ステータスを日本語で取得
+     * ステータスの日本語表示を取得
      */
     public function getStatusJapaneseAttribute(): string
     {
         return [
-            'processing' => '処理中',
-            'completed' => '完了',
-            'failed' => '失敗',
-        ][$this->status] ?? '不明';
+            self::STATUS_PROCESSING => '生成中',
+            self::STATUS_COMPLETED => '完了',
+            self::STATUS_FAILED => '失敗'
+        ][$this->status] ?? $this->status;
     }
 
     /**
-     * 処理中かどうかを確認
-     */
-    public function isProcessing(): bool
-    {
-        return $this->status === 'processing';
-    }
-
-    /**
-     * 完了しているかどうかを確認
-     */
-    public function isCompleted(): bool
-    {
-        return $this->status === 'completed';
-    }
-
-    /**
-     * 失敗したかどうかを確認
-     */
-    public function isFailed(): bool
-    {
-        return $this->status === 'failed';
-    }
-
-    /**
-     * レポートの進捗状況を計算（パーセント）
+     * 進捗率を取得（0-100）
      */
     public function getProgressPercentage(): int
     {
-        if ($this->isCompleted()) {
+        if ($this->status === self::STATUS_COMPLETED) {
             return 100;
         }
 
-        if ($this->isFailed()) {
+        if ($this->status === self::STATUS_FAILED) {
             return 0;
         }
 
-        // 処理中の場合は作成時間から推定
-        $createdAt = $this->created_at;
-        $now = now();
-        $diff = $createdAt->diffInMinutes($now);
+        // コンポーネントの生成状況から進捗を計算
+        $totalComponents = $this->components()->count();
+        if ($totalComponents === 0) {
+            return 10; // 初期状態
+        }
 
-        // レポート生成は通常5分程度と仮定
-        $estimatedCompletionTime = 5;
-        $progress = min(95, round(($diff / $estimatedCompletionTime) * 100));
+        $completedComponents = $this->components()
+            ->whereNotNull('data_json')
+            ->count();
 
-        return $progress;
+        return min(90, 10 + (int)(($completedComponents / $totalComponents) * 80));
     }
 }

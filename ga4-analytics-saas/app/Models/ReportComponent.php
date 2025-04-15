@@ -50,6 +50,10 @@ class ReportComponent extends Model
             'table' => '表',
             'text' => 'テキスト',
             'heatmap' => 'ヒートマップ',
+            'metrics' => '基本指標',
+            'devices' => 'デバイス分析',
+            'sources' => 'トラフィックソース',
+            'pages' => 'ページ分析'
         ][$this->component_type] ?? 'その他';
     }
 
@@ -122,5 +126,17 @@ class ReportComponent extends Model
     private function formatHeatmapData(): array
     {
         return $this->data_json ?? [];
+    }
+
+    public function getFormattedValueAttribute($key)
+    {
+        if (isset($this->data_json[$key])) {
+            $value = $this->data_json[$key];
+            if (is_numeric($value)) {
+                return number_format($value);
+            }
+            return $value;
+        }
+        return null;
     }
 }

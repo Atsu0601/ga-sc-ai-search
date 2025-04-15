@@ -5,7 +5,6 @@ namespace App\Services;
 
 use App\Models\AnalyticsAccount;
 use Carbon\Carbon;
-use Google\Client;
 use Google\Analytics\Data\V1beta\Client\BetaAnalyticsDataClient;
 use Google\Analytics\Data\V1beta\DateRange;
 use Google\Analytics\Data\V1beta\Dimension;
@@ -32,114 +31,25 @@ class GoogleAnalyticsService
                 throw new \Exception('サービスアカウントの認証情報ファイルが見つかりません');
             }
 
-            // 認証情報の内容をログ出力（メールアドレスのみ）
-            $credentials = json_decode(file_get_contents($keyFilePath), true);
-            Log::info('サービスアカウント情報', [
-                'client_email' => $credentials['client_email'] ?? 'not found',
-                'property_id' => $account->property_id
-            ]);
-
             // Analytics Data APIクライアントの初期化
             $analytics = new BetaAnalyticsDataClient([
                 'credentials' => $keyFilePath
             ]);
 
-            // プロパティIDの確認
-            if (empty($account->property_id)) {
-                throw new \Exception('プロパティIDが設定されていません');
-            }
+            // プロパティIDの確認と整形
+            $propertyId = $this->formatPropertyId($account->property_id);
 
-            // プロパティIDのフォーマットを確認
-            $propertyId = $account->property_id;
-            if (!str_starts_with($propertyId, 'properties/')) {
-                $propertyId = 'properties/' . $propertyId;
-            }
+            // 基本的なメトリクスを取得
+            $basicMetrics = $this->fetchBasicMetrics($analytics, $propertyId, $startDate, $endDate);
 
-            Log::info('GA4リクエスト情報', [
-                'property_id' => $propertyId,
-                'date_range' => [
-                    'start' => $startDate->format('Y-m-d'),
-                    'end' => $endDate->format('Y-m-d')
-                ]
-            ]);
+            // デバイスデータを取得
+            $deviceData = $this->fetchDeviceData($analytics, $propertyId, $startDate, $endDate);
 
-            // レポートリクエストの作成
-            $request = new RunReportRequest([
-                'property' => $propertyId,
-                'date_ranges' => [
-                    new DateRange([
-                        'start_date' => $startDate->format('Y-m-d'),
-                        'end_date' => $endDate->format('Y-m-d'),
-                    ]),
-                ],
-                'dimensions' => [
-                    new Dimension(['name' => 'date']),
-                    new Dimension(['name' => 'pageTitle']),
-                    new Dimension(['name' => 'fullPageUrl']),
-                ],
-                'metrics' => [
-                    new Metric(['name' => 'screenPageViews']),
-                    new Metric(['name' => 'totalUsers']),
-                    new Metric(['name' => 'userEngagementDuration']),
-                ],
-            ]);
+            // トラフィックソースデータを取得
+            $sourceData = $this->fetchSourceData($analytics, $propertyId, $startDate, $endDate);
 
-            // レポートの実行
-            $response = $analytics->runReport($request);
-            $rows = $response->getRows();
-
-            if (empty($rows)) {
-                Log::warning('GA4からデータが取得できませんでした', [
-                    'account_id' => $account->id,
-                    'property_id' => $account->property_id,
-                    'date_range' => [
-                        'start' => $startDate->format('Y-m-d'),
-                        'end' => $endDate->format('Y-m-d')
-                    ]
-                ]);
-
-                // データが空の場合は空の配列を返す
-                return [
-                    'metrics' => [
-                        'users' => 0,
-                        'sessions' => 0,
-                        'pageviews' => 0,
-                        'bounceRate' => 0,
-                        'avgSessionDuration' => 0
-                    ],
-                    'dimensions' => [
-                        'devices' => [],
-                        'sources' => [],
-                        'pages' => []
-                    ]
-                ];
-            }
-
-            // レスポンスの処理
-            $pageViews = 0;
-            $users = 0;
-            $engagementTime = 0;
-            $pageData = [];
-
-            foreach ($rows as $row) {
-                $dimensionValues = $row->getDimensionValues();
-                $metricValues = $row->getMetricValues();
-
-                // 必要な値が全て存在することを確認
-                if (count($dimensionValues) >= 3 && count($metricValues) >= 3) {
-                    $pageViews += (int)$metricValues[0]->getValue();
-                    $users += (int)$metricValues[1]->getValue();
-                    $engagementTime += (float)$metricValues[2]->getValue();
-
-                    $pageData[] = [
-                        'page' => $dimensionValues[2]->getValue(),
-                        'pageviews' => (int)$metricValues[0]->getValue()
-                    ];
-                }
-            }
-
-            // セッション数を推定（ユーザー数の1.2倍と仮定）
-            $sessions = (int)($users * 1.2);
+            // ページデータを取得
+            $pageData = $this->fetchPageData($analytics, $propertyId, $startDate, $endDate);
 
             // 最終同期日時を更新
             $account->forceFill([
@@ -149,46 +59,18 @@ class GoogleAnalyticsService
             Log::info('GA4データ取得完了', [
                 'account_id' => $account->id,
                 'last_synced_at' => $account->last_synced_at,
-                'metrics' => [
-                    'users' => $users,
-                    'sessions' => $sessions,
-                    'pageviews' => $pageViews
-                ]
+                'metrics' => $basicMetrics['metrics']
             ]);
 
-            // ビューで期待される構造でデータを返す
             return [
-                'metrics' => [
-                    'users' => $users,
-                    'sessions' => $sessions,
-                    'pageviews' => $pageViews,
-                    'bounceRate' => rand(30, 70), // 仮の値
-                    'avgSessionDuration' => $engagementTime / ($users ?: 1)
-                ],
+                'metrics' => $basicMetrics['metrics'],
                 'dimensions' => [
-                    'devices' => [
-                        ['device' => 'desktop', 'users' => (int)($users * 0.6)],
-                        ['device' => 'mobile', 'users' => (int)($users * 0.35)],
-                        ['device' => 'tablet', 'users' => (int)($users * 0.05)]
-                    ],
-                    'sources' => [
-                        ['source' => 'google', 'users' => (int)($users * 0.4)],
-                        ['source' => 'direct', 'users' => (int)($users * 0.3)],
-                        ['source' => 'referral', 'users' => (int)($users * 0.15)],
-                        ['source' => 'social', 'users' => (int)($users * 0.1)],
-                        ['source' => 'other', 'users' => (int)($users * 0.05)]
-                    ],
+                    'devices' => $deviceData,
+                    'sources' => $sourceData,
                     'pages' => $pageData
                 ]
             ];
-        } catch (\Google\ApiCore\ApiException $e) {
-            Log::error('GA4 API呼び出しエラー', [
-                'account_id' => $account->id,
-                'error' => $e->getMessage(),
-                'code' => $e->getCode()
-            ]);
-            throw new \Exception('GA4 APIの呼び出しに失敗しました: ' . $e->getMessage());
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('GA4データ取得エラー', [
                 'account_id' => $account->id,
                 'error' => $e->getMessage(),
@@ -199,45 +81,152 @@ class GoogleAnalyticsService
     }
 
     /**
-     * 開発用ダミートラフィックデータ
+     * プロパティIDのフォーマットを確認
      */
-    private function getDummyTrafficData($startDate, $endDate)
+    private function formatPropertyId($propertyId)
     {
-        $data = [];
-        $current = clone $startDate;
-
-        while ($current <= $endDate) {
-            $data[] = [
-                'date' => $current->format('Y-m-d'),
-                'users' => rand(100, 1000),
-                'sessions' => rand(120, 1200),
-                'pageviews' => rand(300, 3000),
-                'bounce_rate' => rand(30, 70) / 100
-            ];
-
-            $current->addDay();
+        if (empty($propertyId)) {
+            throw new \Exception('プロパティIDが設定されていません');
         }
-
-        return $data;
+        return str_starts_with($propertyId, 'properties/') ? $propertyId : 'properties/' . $propertyId;
     }
 
     /**
-     * 開発用ダミーヒートマップデータ
+     * 基本的なメトリクスを取得
      */
-    private function getDummyHeatmapData()
+    private function fetchBasicMetrics($analytics, $propertyId, $startDate, $endDate)
     {
-        $data = [];
+        $request = new RunReportRequest([
+            'property' => $propertyId,
+            'date_ranges' => [
+                new DateRange([
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                ]),
+            ],
+            'metrics' => [
+                new Metric(['name' => 'totalUsers']),
+                new Metric(['name' => 'sessions']),
+                new Metric(['name' => 'screenPageViews']),
+                new Metric(['name' => 'bounceRate']),
+                new Metric(['name' => 'averageSessionDuration']),
+            ],
+        ]);
 
-        for ($hour = 0; $hour < 24; $hour++) {
-            for ($day = 0; $day < 7; $day++) {
-                $data[] = [
-                    'day' => $day,
-                    'hour' => $hour,
-                    'value' => rand(1, 100)
-                ];
-            }
-        }
+        $response = $analytics->runReport($request);
+        $row = $response->getRows()[0] ?? null;
 
-        return $data;
+        return [
+            'metrics' => [
+                'users' => (int)($row ? $row->getMetricValues()[0]->getValue() : 0),
+                'sessions' => (int)($row ? $row->getMetricValues()[1]->getValue() : 0),
+                'pageviews' => (int)($row ? $row->getMetricValues()[2]->getValue() : 0),
+                'bounceRate' => (float)($row ? $row->getMetricValues()[3]->getValue() : 0),
+                'avgSessionDuration' => (float)($row ? $row->getMetricValues()[4]->getValue() : 0),
+            ]
+        ];
+    }
+
+    /**
+     * デバイスデータを取得
+     */
+    private function fetchDeviceData($analytics, $propertyId, $startDate, $endDate)
+    {
+        $request = new RunReportRequest([
+            'property' => $propertyId,
+            'date_ranges' => [
+                new DateRange([
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                ]),
+            ],
+            'dimensions' => [
+                new Dimension(['name' => 'deviceCategory']),
+            ],
+            'metrics' => [
+                new Metric(['name' => 'totalUsers']),
+            ],
+        ]);
+
+        $response = $analytics->runReport($request);
+        $rows = $response->getRows();
+
+        // RepeatedFieldを配列に変換
+        return array_map(function ($row) {
+            return [
+                'device' => $row->getDimensionValues()[0]->getValue(),
+                'users' => (int)$row->getMetricValues()[0]->getValue(),
+            ];
+        }, iterator_to_array($rows));
+    }
+
+    /**
+     * トラフィックソースデータを取得
+     */
+    private function fetchSourceData($analytics, $propertyId, $startDate, $endDate)
+    {
+        $request = new RunReportRequest([
+            'property' => $propertyId,
+            'date_ranges' => [
+                new DateRange([
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                ]),
+            ],
+            'dimensions' => [
+                new Dimension(['name' => 'sessionSource']),
+            ],
+            'metrics' => [
+                new Metric(['name' => 'totalUsers']),
+            ],
+            'limit' => 5,
+        ]);
+
+        $response = $analytics->runReport($request);
+        $rows = $response->getRows();
+
+        // RepeatedFieldを配列に変換
+        return array_map(function ($row) {
+            return [
+                'source' => $row->getDimensionValues()[0]->getValue(),
+                'users' => (int)$row->getMetricValues()[0]->getValue(),
+            ];
+        }, iterator_to_array($rows));
+    }
+
+    /**
+     * ページデータを取得
+     */
+    private function fetchPageData($analytics, $propertyId, $startDate, $endDate)
+    {
+        $request = new RunReportRequest([
+            'property' => $propertyId,
+            'date_ranges' => [
+                new DateRange([
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                ]),
+            ],
+            'dimensions' => [
+                new Dimension(['name' => 'pagePath']),
+                new Dimension(['name' => 'pageTitle']),
+            ],
+            'metrics' => [
+                new Metric(['name' => 'screenPageViews']),
+            ],
+            'limit' => 10,
+        ]);
+
+        $response = $analytics->runReport($request);
+        $rows = $response->getRows();
+
+        // RepeatedFieldを配列に変換
+        return array_map(function ($row) {
+            return [
+                'page' => $row->getDimensionValues()[0]->getValue(),
+                'title' => $row->getDimensionValues()[1]->getValue(),
+                'pageviews' => (int)$row->getMetricValues()[0]->getValue(),
+            ];
+        }, iterator_to_array($rows));
     }
 }

@@ -19,6 +19,122 @@ class ReportComponentGenerator
     {
         $this->dataSnapshotService = $dataSnapshotService;
     }
+
+    public function generateComponents(AnalysisReport $report): bool
+    {
+        try {
+            Log::info('レポートコンポーネント生成開始', [
+                'report_id' => $report->id,
+                'type' => $report->report_type
+            ]);
+
+            // データの存在確認
+            if (!$report->data_json) {
+                Log::error('レポートデータが存在しません', ['report_id' => $report->id]);
+                return false;
+            }
+
+            // 既存のコンポーネントを削除
+            ReportComponent::where('report_id', $report->id)->delete();
+
+            // 基本指標コンポーネント
+            if (!empty($report->data_json['analytics']['metrics'])) {
+                $this->createMetricsComponent($report);
+            }
+
+            // デバイス分析コンポーネント
+            if (!empty($report->data_json['analytics']['dimensions']['devices'])) {
+                $this->createDeviceAnalysisComponent($report);
+            }
+
+            // トラフィックソース分析コンポーネント
+            if (!empty($report->data_json['analytics']['dimensions']['sources'])) {
+                $this->createTrafficSourceComponent($report);
+            }
+
+            // ページ分析コンポーネント
+            if (!empty($report->data_json['analytics']['dimensions']['pages'])) {
+                $this->createPageAnalysisComponent($report);
+            }
+
+            // Search Console分析コンポーネント
+            if (!empty($report->data_json['search_console'])) {
+                $this->createSearchConsoleComponent($report);
+            }
+
+            Log::info('レポートコンポーネント生成完了', ['report_id' => $report->id]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('レポートコンポーネント生成エラー', [
+                'report_id' => $report->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    private function createMetricsComponent(AnalysisReport $report): void
+    {
+        ReportComponent::create([
+            'report_id' => $report->id,
+            'component_type' => 'metrics',
+            'title' => '基本指標',
+            'data_json' => $report->data_json['analytics']['metrics'],
+            'order' => 1
+        ]);
+    }
+
+    private function createDeviceAnalysisComponent(AnalysisReport $report): void
+    {
+        ReportComponent::create([
+            'report_id' => $report->id,
+            'component_type' => 'devices',
+            'title' => 'デバイス分析',
+            'data_json' => [
+                'devices' => $report->data_json['analytics']['dimensions']['devices']
+            ],
+            'order' => 2
+        ]);
+    }
+
+    private function createTrafficSourceComponent(AnalysisReport $report): void
+    {
+        ReportComponent::create([
+            'report_id' => $report->id,
+            'component_type' => 'sources',
+            'title' => 'トラフィックソース',
+            'data_json' => [
+                'sources' => $report->data_json['analytics']['dimensions']['sources']
+            ],
+            'order' => 3
+        ]);
+    }
+
+    private function createPageAnalysisComponent(AnalysisReport $report): void
+    {
+        ReportComponent::create([
+            'report_id' => $report->id,
+            'component_type' => 'pages',
+            'title' => 'ページ分析',
+            'data_json' => [
+                'pages' => $report->data_json['analytics']['dimensions']['pages']
+            ],
+            'order' => 4
+        ]);
+    }
+
+    private function createSearchConsoleComponent(AnalysisReport $report): void
+    {
+        ReportComponent::create([
+            'report_id' => $report->id,
+            'component_type' => 'search_console',
+            'title' => '検索パフォーマンス',
+            'data_json' => $report->data_json['search_console'],
+            'order' => 5
+        ]);
+    }
+
     /**
      * レポートの全コンポーネントを生成
      */

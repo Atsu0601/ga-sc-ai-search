@@ -5,8 +5,9 @@ namespace App\Services;
 
 use App\Models\SearchConsoleAccount;
 use Carbon\Carbon;
-use Google_Client;
-use Google_Service_Webmasters;
+use Google\Client as GoogleClient;
+use Google\Service\SearchConsole;
+use Google\Service\SearchConsole\SearchAnalyticsQueryRequest;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -18,119 +19,142 @@ class SearchConsoleService
     public function fetchData(SearchConsoleAccount $account, Carbon $startDate, Carbon $endDate)
     {
         try {
-            // Google Clientの初期化
-            $client = new Google_Client();
-            $client->setAuthConfig(config('services.google.client_secret_path'));
-            $client->addScope(Google_Service_Webmasters::WEBMASTERS_READONLY);
-
-            // アクセストークンの設定
-            $client->setAccessToken($account->access_token);
-
-            // トークンが期限切れの場合、リフレッシュトークンを使用して更新
-            if ($client->isAccessTokenExpired() && $account->refresh_token) {
-                $client->fetchAccessTokenWithRefreshToken($account->refresh_token);
-                $tokens = $client->getAccessToken();
-
-                // 新しいトークンを保存
-                $account->access_token = $tokens['access_token'];
-                if (isset($tokens['refresh_token'])) {
-                    $account->refresh_token = $tokens['refresh_token'];
-                }
-                $account->save();
+            // クライアントの設定を確認
+            if (!$account || !$account->access_token) {
+                Log::error('Search Console アカウント情報が不正です', [
+                    'account' => $account
+                ]);
+                return null;
             }
 
-            // Search Console APIサービスの初期化
-            $searchConsole = new Google_Service_Webmasters($client);
+            $client = new GoogleClient();
 
-            // データ取得処理（実際のAPIリクエストはSearch Console APIに依存）
+            // 認証情報の設定
+            $client->setAccessToken([
+                'access_token' => $account->access_token,
+                'refresh_token' => $account->refresh_token
+            ]);
+
+            // トークンの有効性確認
+            if ($client->isAccessTokenExpired()) {
+                Log::info('アクセストークンの更新を試みます');
+                try {
+                    $client->fetchAccessTokenWithRefreshToken($account->refresh_token);
+                    // 新しいトークンを保存
+                    $account->access_token = $client->getAccessToken()['access_token'];
+                    $account->save();
+                } catch (\Exception $e) {
+                    Log::error('トークン更新に失敗しました', [
+                        'error' => $e->getMessage()
+                    ]);
+                    return null;
+                }
+            }
+
+            // Search Console APIの初期化とデータ取得
+            $service = new \Google\Service\SearchConsole($client);
+
+            // キーワードデータの取得
+            $keywordsData = $this->fetchKeywordsData($service, $account->site_url, $startDate, $endDate);
+
+            // クリック/インプレッションデータの取得
+            $clickImpressionsData = $this->fetchClickImpressionsData($service, $account->site_url, $startDate, $endDate);
+
+            // ページパフォーマンスデータの取得
+            $pagePerformanceData = $this->fetchPagePerformanceData($service, $account->site_url, $startDate, $endDate);
 
             // 最終同期日時を更新
             $account->last_synced_at = now();
             $account->save();
 
-            // ダミーデータを返す（開発用）
             return [
-                'top_keywords' => $this->getDummyKeywordsData(),
-                'click_impressions' => $this->getDummyClickImpressionsData($startDate, $endDate),
-                'page_performance' => $this->getDummyPagePerformanceData(),
-                // その他のデータ...
+                'top_keywords' => $keywordsData,
+                'click_impressions' => $clickImpressionsData,
+                'page_performance' => $pagePerformanceData
             ];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Search Consoleデータ取得エラー', [
-                'account_id' => $account->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
-            throw $e;
+            return null;
         }
     }
 
     /**
-     * 開発用ダミーキーワードデータ
+     * キーワードデータを取得
      */
-    private function getDummyKeywordsData()
+    private function fetchKeywordsData($searchConsole, $siteUrl, $startDate, $endDate)
     {
-        $keywords = [
-            ['GA4 分析ツール', rand(50, 200), rand(1000, 3000), rand(2, 8) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['Search Console 連携', rand(30, 150), rand(800, 2500), rand(2, 7) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['AI レポート 生成', rand(20, 100), rand(500, 2000), rand(2, 6) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['ウェブ アクセス 解析', rand(40, 180), rand(900, 2800), rand(3, 9) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['ウェブサイト パフォーマンス', rand(25, 120), rand(600, 2200), rand(2, 7) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['SEO 改善 ツール', rand(35, 160), rand(850, 2600), rand(3, 8) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['Google データ 分析', rand(45, 190), rand(950, 2900), rand(3, 8) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['アクセス 解析 レポート', rand(15, 90), rand(400, 1800), rand(2, 6) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['ウェブマーケティング ツール', rand(30, 140), rand(750, 2400), rand(3, 7) . '%', rand(1, 10) . '.' . rand(0, 9)],
-            ['サイト 分析 AI', rand(10, 80), rand(300, 1500), rand(2, 5) . '%', rand(1, 10) . '.' . rand(0, 9)],
-        ];
+        $request = new SearchAnalyticsQueryRequest();
+        $request->setStartDate($startDate->format('Y-m-d'));
+        $request->setEndDate($endDate->format('Y-m-d'));
+        $request->setDimensions(['query']);
+        $request->setRowLimit(10);
+        $request->setSearchType('web');
 
-        return $keywords;
-    }
+        $response = $searchConsole->searchanalytics->query($siteUrl, $request);
+        $rows = $response->getRows() ?? [];
 
-    /**
-     * 開発用ダミークリック/インプレッションデータ
-     */
-    private function getDummyClickImpressionsData($startDate, $endDate)
-    {
-        $data = [];
-        $current = clone $startDate;
-
-        while ($current <= $endDate) {
-            $data[] = [
-                'date' => $current->format('Y-m-d'),
-                'clicks' => rand(50, 500),
-                'impressions' => rand(1000, 5000),
-                'ctr' => rand(1, 10) / 100,
-                'position' => rand(1, 20) + (rand(0, 99) / 100)
+        return array_map(function ($row) {
+            return [
+                $row->getKeys()[0], // クエリ（キーワード）
+                $row->getClicks(), // クリック数
+                $row->getImpressions(), // インプレッション数
+                number_format($row->getCtr() * 100, 1) . '%', // CTR
+                number_format($row->getPosition(), 1) // 平均順位
             ];
-
-            $current->addDay();
-        }
-
-        return $data;
+        }, $rows);
     }
 
     /**
-     * 開発用ダミーページパフォーマンスデータ
+     * 日別のクリック/インプレッションデータを取得
      */
-    private function getDummyPagePerformanceData()
+    private function fetchClickImpressionsData($searchConsole, $siteUrl, $startDate, $endDate)
     {
-        $pages = [
-            '/home', '/about', '/services', '/products', '/blog',
-            '/contact', '/pricing', '/resources', '/faq', '/support'
-        ];
+        $request = new SearchAnalyticsQueryRequest();
+        $request->setStartDate($startDate->format('Y-m-d'));
+        $request->setEndDate($endDate->format('Y-m-d'));
+        $request->setDimensions(['date']);
+        $request->setSearchType('web');
 
-        $data = [];
+        $response = $searchConsole->searchanalytics->query($siteUrl, $request);
+        $rows = $response->getRows() ?? [];
 
-        foreach ($pages as $page) {
-            $data[] = [
-                'page' => $page,
-                'clicks' => rand(10, 200),
-                'impressions' => rand(100, 2000),
-                'ctr' => rand(1, 15) / 100,
-                'position' => rand(1, 20) + (rand(0, 99) / 100)
+        return array_map(function ($row) {
+            return [
+                'date' => $row->getKeys()[0],
+                'clicks' => $row->getClicks(),
+                'impressions' => $row->getImpressions(),
+                'ctr' => $row->getCtr(),
+                'position' => $row->getPosition()
             ];
-        }
+        }, $rows);
+    }
 
-        return $data;
+    /**
+     * ページパフォーマンスデータを取得
+     */
+    private function fetchPagePerformanceData($searchConsole, $siteUrl, $startDate, $endDate)
+    {
+        $request = new SearchAnalyticsQueryRequest();
+        $request->setStartDate($startDate->format('Y-m-d'));
+        $request->setEndDate($endDate->format('Y-m-d'));
+        $request->setDimensions(['page']);
+        $request->setRowLimit(10);
+        $request->setSearchType('web');
+
+        $response = $searchConsole->searchanalytics->query($siteUrl, $request);
+        $rows = $response->getRows() ?? [];
+
+        return array_map(function ($row) {
+            return [
+                'page' => $row->getKeys()[0],
+                'clicks' => $row->getClicks(),
+                'impressions' => $row->getImpressions(),
+                'ctr' => $row->getCtr(),
+                'position' => $row->getPosition()
+            ];
+        }, $rows);
     }
 }

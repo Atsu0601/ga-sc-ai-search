@@ -78,6 +78,7 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show');
     Route::get('/reports/{report}/download', [ReportController::class, 'download'])->name('reports.download');
+    Route::delete('/reports/{report}', [ReportController::class, 'destroy'])->name('reports.destroy');
 
     // レポート作成
     Route::get('/websites/{website}/reports/create', [ReportController::class, 'create'])->name('reports.create');
