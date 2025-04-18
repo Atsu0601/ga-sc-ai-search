@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Website;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class WebsiteController extends Controller
 {
@@ -51,7 +54,7 @@ class WebsiteController extends Controller
 
         if ($websiteCount >= $user->website_limit) {
             return redirect()->route('websites.index')
-                             ->with('error', 'ウェブサイトの登録上限に達しています。プランをアップグレードしてください。');
+                ->with('error', 'ウェブサイトの登録上限に達しています。プランをアップグレードしてください。');
         }
 
         $website = new Website($request->all());
@@ -60,7 +63,7 @@ class WebsiteController extends Controller
         $website->save();
 
         return redirect()->route('websites.show', $website->id)
-                         ->with('success', 'ウェブサイトが登録されました。Google AnalyticsとSearch Consoleを接続してください。');
+            ->with('success', 'ウェブサイトが登録されました。Google AnalyticsとSearch Consoleを接続してください。');
     }
 
     /**
@@ -92,17 +95,78 @@ class WebsiteController extends Controller
     {
         $this->authorize('update', $website);
 
-        $validated = $request->validate([
+        // バリデーション
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'url' => 'required|url|max:255',
-            'description' => 'nullable|string',
-            'status' => 'required|in:active,pending,inactive',
+            'ga4_property_id' => 'nullable|string|max:255',
+            'ga4_credentials' => 'nullable|string',
+            'search_console_site_url' => 'nullable|url|max:255',
         ]);
 
-        $website->update($validated);
+        if ($validator->fails()) {
+            return redirect()
+                ->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
 
-        return redirect()->route('websites.show', $website)
-                        ->with('success', 'ウェブサイト情報が更新されました。');
+        try {
+            DB::beginTransaction();
+
+            // 既存のデータを保持しながら更新
+            $website->name = $request->name;
+            $website->url = $request->url;
+
+            // GA4関連のフィールドは入力がある場合のみ更新
+            if ($request->filled('ga4_property_id')) {
+                $website->ga4_property_id = $request->ga4_property_id;
+            }
+
+            // GA4認証情報は慎重に扱う
+            if ($request->filled('ga4_credentials')) {
+                try {
+                    $website->ga4_credentials = $request->ga4_credentials;
+                } catch (\Exception $e) {
+                    Log::error('Failed to encrypt GA4 credentials', [
+                        'website_id' => $website->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    throw $e;
+                }
+            }
+
+            // Search Console URLの更新
+            if ($request->filled('search_console_site_url')) {
+                $website->search_console_site_url = $request->search_console_site_url;
+            }
+
+            $website->save();
+
+            DB::commit();
+
+            Log::info('Website updated successfully', [
+                'website_id' => $website->id,
+                'user_id' => Auth::id()
+            ]);
+
+            return redirect()
+                ->route('websites.show', $website->id)
+                ->with('success', 'ウェブサイト情報を更新しました');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Failed to update website', [
+                'website_id' => $website->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'ウェブサイト情報の更新に失敗しました')
+                ->withInput();
+        }
     }
 
     /**
@@ -116,6 +180,6 @@ class WebsiteController extends Controller
         $website->delete();
 
         return redirect()->route('websites.index')
-                         ->with('success', 'ウェブサイトが削除されました。');
+            ->with('success', 'ウェブサイトが削除されました。');
     }
 }

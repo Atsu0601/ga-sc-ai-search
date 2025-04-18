@@ -11,14 +11,34 @@ class Website extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<string>
+     */
     protected $fillable = [
-        'user_id',
         'name',
         'url',
-        'description',
+        'ga4_property_id',
+        'ga4_credentials',
+        'search_console_site_url',
+        'user_id',
         'status',
+        'description'
     ];
 
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'ga4_credentials' => 'encrypted',
+    ];
+
+    /**
+     * Get the user that owns the website.
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

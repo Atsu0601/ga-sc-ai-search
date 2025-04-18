@@ -54,7 +54,7 @@ class User extends Authenticatable
         return $this->hasOne(Company::class);
     }
 
-    public function websites(): HasMany
+    public function websites()
     {
         return $this->hasMany(Website::class);
     }

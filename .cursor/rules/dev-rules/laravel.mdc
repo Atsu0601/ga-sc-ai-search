@@ -1,60 +1,14 @@
 ---
 description: Rules for Laravel project with specific directory structure and functionalities
-globs:
-- ga4-analytics-saas/app/Http/Controllers/ProfileController.php
-- ga4-analytics-saas/app/Http/Controllers/CompanyController.php
-- ga4-analytics-saas/app/Http/Controllers/GoogleApiController.php
-- ga4-analytics-saas/app/Http/Controllers/WebsiteController.php
-- ga4-analytics-saas/app/Http/Controllers/ReportController.php
-- ga4-analytics-saas/app/Http/Controllers/SubscriptionController.php
-- ga4-analytics-saas/app/Http/Controllers/DataSnapshotController.php
-- ga4-analytics-saas/app/Http/Controllers/StripeWebhookController.php
-- ga4-analytics-saas/app/Http/Controllers/HeatmapController.php
-- ga4-analytics-saas/app/Http/Controllers/Admin/UserController.php
-- ga4-analytics-saas/app/Http/Controllers/Admin/SubscriptionController.php
-- ga4-analytics-saas/app/Http/Controllers/Admin/SettingController.php
-- ga4-analytics-saas/app/Models/User.php
-- ga4-analytics-saas/app/Models/Company.php
-- ga4-analytics-saas/app/Models/Website.php
-- ga4-analytics-saas/app/Models/Report.php
-- ga4-analytics-saas/app/Models/DataSnapshot.php
-- ga4-analytics-saas/app/Models/Heatmap.php
-- ga4-analytics-saas/app/Models/Subscription.php
-- ga4-analytics-saas/resources/views/welcome.blade.php
-- ga4-analytics-saas/resources/views/dashboard.blade.php
-- ga4-analytics-saas/resources/views/profile/edit.blade.php
-- ga4-analytics-saas/resources/views/websites/index.blade.php
-- ga4-analytics-saas/resources/views/websites/show.blade.php
-- ga4-analytics-saas/resources/views/websites/create.blade.php
-- ga4-analytics-saas/resources/views/websites/edit.blade.php
-- ga4-analytics-saas/resources/views/reports/index.blade.php
-- ga4-analytics-saas/resources/views/reports/show.blade.php
-- ga4-analytics-saas/resources/views/reports/create.blade.php
-- ga4-analytics-saas/resources/views/snapshots/index.blade.php
-- ga4-analytics-saas/resources/views/snapshots/show.blade.php
-- ga4-analytics-saas/resources/views/heatmaps/index.blade.php
-- ga4-analytics-saas/resources/views/heatmaps/show.blade.php
-- ga4-analytics-saas/resources/views/heatmaps/create.blade.php
-- ga4-analytics-saas/resources/views/heatmaps/edit.blade.php
-- ga4-analytics-saas/resources/views/admin/dashboard.blade.php
-- ga4-analytics-saas/resources/views/admin/users/index.blade.php
-- ga4-analytics-saas/resources/views/admin/users/show.blade.php
-- ga4-analytics-saas/resources/views/admin/users/create.blade.php
-- ga4-analytics-saas/resources/views/admin/users/edit.blade.php
-- ga4-analytics-saas/resources/views/admin/subscriptions/index.blade.php
-- ga4-analytics-saas/resources/views/admin/subscriptions/plans/index.blade.php
-- ga4-analytics-saas/resources/views/admin/subscriptions/plans/create.blade.php
-- ga4-analytics-saas/resources/views/admin/subscriptions/plans/edit.blade.php
-- ga4-analytics-saas/resources/views/admin/subscriptions/payments.blade.php
-- ga4-analytics-saas/resources/views/admin/settings/index.blade.php
-- ga4-analytics-saas/routes/web.php
-- ga4-analytics-saas/routes/auth.php
+globs: 
 alwaysApply: true
 ---
 
 # ディレクトリ構造
 
 ```
+ga4-analytics-saasがプロジェクトディレクトリです。
+
 ga4-analytics-saas/
 ├── app/
 │   ├── Http/

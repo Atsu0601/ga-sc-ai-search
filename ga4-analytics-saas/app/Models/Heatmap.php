@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Spatie\Browsershot\Browsershot;
 
 class Heatmap extends Model
 {
@@ -27,9 +30,10 @@ class Heatmap extends Model
         'website_id',
         'page_url',
         'type',
-        'data_json',
         'date_range_start',
-        'date_range_end'
+        'date_range_end',
+        'screenshot_path',
+        'data_json'
     ];
 
     /**
@@ -38,12 +42,9 @@ class Heatmap extends Model
      * @var array
      */
     protected $casts = [
-        'data_json' => 'json',
-        'date_range_start' => 'date',
-        'date_range_end' => 'date',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime'
+        'date_range_start' => 'datetime',
+        'date_range_end' => 'datetime',
+        'data_json' => 'array'
     ];
 
     /**
@@ -71,9 +72,7 @@ class Heatmap extends Model
     {
         return [
             'click' => 'クリックヒートマップ',
-            'move' => 'マウス移動ヒートマップ',
-            'scroll' => 'スクロールヒートマップ',
-            'attention' => '注目度ヒートマップ'
+            'scroll' => 'スクロールヒートマップ'
         ];
     }
 
@@ -99,275 +98,77 @@ class Heatmap extends Model
      */
     public static function createFromSnapshots($websiteId, $pageUrl, $type, $startDate, $endDate)
     {
-        // 指定した日付範囲のスナップショットを取得
-        $snapshots = DataSnapshot::where('website_id', $websiteId)
-            ->whereBetween('snapshot_date', [$startDate, $endDate])
-            ->where('snapshot_type', 'analytics')
-            ->get();
+        $heatmap = new self();
+        $heatmap->website_id = $websiteId;
+        $heatmap->page_url = $pageUrl;
+        $heatmap->type = $type;
+        $heatmap->date_range_start = $startDate;
+        $heatmap->date_range_end = $endDate;
 
-        // ヒートマップデータの初期化
-        $heatmapData = [];
-
-        if ($type === 'click') {
-            $heatmapData = self::processClickData($snapshots, $pageUrl);
-        } elseif ($type === 'scroll') {
-            $heatmapData = self::processScrollData($snapshots, $pageUrl);
-        } elseif ($type === 'move') {
-            $heatmapData = self::processMoveData($snapshots, $pageUrl);
-        } elseif ($type === 'attention') {
-            $heatmapData = self::processAttentionData($snapshots, $pageUrl);
-        }
-
-        // ヒートマップレコードを作成
-        return self::create([
-            'website_id' => $websiteId,
-            'page_url' => $pageUrl,
-            'type' => $type,
-            'data_json' => $heatmapData,
-            'date_range_start' => $startDate,
-            'date_range_end' => $endDate
-        ]);
-    }
-
-    /**
-     * クリックヒートマップデータ処理
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $snapshots
-     * @param string $pageUrl
-     * @return array
-     */
-    private static function processClickData($snapshots, $pageUrl)
-    {
-        $clicks = [];
-        $totalClicks = 0;
-
-        foreach ($snapshots as $snapshot) {
-            $data = $snapshot->data_json;
-
-            // データ形式に応じて処理を調整
-            // クリックイベントのパスはGA4の設定によって異なる場合があります
-            if (isset($data['events'])) {
-                foreach ($data['events'] as $event) {
-                    if (
-                        $event['name'] === 'click' &&
-                        $event['page'] === $pageUrl &&
-                        isset($event['params']['x_pos']) &&
-                        isset($event['params']['y_pos'])
-                    ) {
-
-                        $clicks[] = [
-                            'x' => (int)$event['params']['x_pos'],
-                            'y' => (int)$event['params']['y_pos']
-                        ];
-                        $totalClicks++;
-                    }
-                }
+        try {
+            // スクリーンショットの取得と保存
+            $screenshotPath = self::captureScreenshot($pageUrl);
+            if ($screenshotPath) {
+                $heatmap->screenshot_path = $screenshotPath;
+                Log::info('Screenshot captured successfully', [
+                    'path' => $screenshotPath,
+                    'url' => $pageUrl
+                ]);
             }
 
-            // 別の形式の場合（例：スナップショットに集計済みデータがある場合）
-            if (isset($data['pages'][$pageUrl]['clicks'])) {
-                foreach ($data['pages'][$pageUrl]['clicks'] as $click) {
-                    if (isset($click['x']) && isset($click['y'])) {
-                        $clicks[] = [
-                            'x' => (int)$click['x'],
-                            'y' => (int)$click['y']
-                        ];
-                        $totalClicks++;
-                    }
-                }
-            }
-        }
+            // ヒートマップデータの生成
+            $heatmap->data_json = self::generateHeatmapData($websiteId, $pageUrl, $type, $startDate, $endDate);
 
-        // サンプルデータの生成（実データがない場合）
-        if (empty($clicks)) {
-            $clicks = self::generateSampleClickData();
-            $totalClicks = count($clicks);
+            $heatmap->save();
+            return $heatmap;
+        } catch (\Exception $e) {
+            Log::error('Failed to create heatmap', [
+                'error' => $e->getMessage(),
+                'url' => $pageUrl,
+                'type' => $type
+            ]);
+            throw $e;
         }
-
-        return [
-            'clicks' => $clicks,
-            'totalClicks' => $totalClicks
-        ];
     }
 
-    /**
-     * スクロールヒートマップデータ処理
-     *
-     * @param \Illuminate\Database\Eloquent\Collection $snapshots
-     * @param string $pageUrl
-     * @return array
-     */
-    private static function processScrollData($snapshots, $pageUrl)
+    private static function captureScreenshot($url)
     {
-        $scrollDepth = [];
-        $totalUsers = 0;
-
-        foreach ($snapshots as $snapshot) {
-            $data = $snapshot->data_json;
-
-            // GA4のスクロールイベント処理
-            if (isset($data['events'])) {
-                foreach ($data['events'] as $event) {
-                    if (
-                        $event['name'] === 'scroll' &&
-                        $event['page'] === $pageUrl &&
-                        isset($event['params']['percent_scrolled'])
-                    ) {
-
-                        $depth = (int)($event['params']['percent_scrolled'] * 10); // %をピクセル値に変換（仮定）
-                        if (!isset($scrollDepth[$depth])) {
-                            $scrollDepth[$depth] = 0;
-                        }
-                        $scrollDepth[$depth]++;
-                    }
-                }
+        try {
+            // スクリーンショット保存用のディレクトリ作成
+            $directory = storage_path('app/public/heatmaps');
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
             }
 
-            // 別の形式の場合
-            if (isset($data['pages'][$pageUrl]['scroll'])) {
-                foreach ($data['pages'][$pageUrl]['scroll'] as $depth => $count) {
-                    if (!isset($scrollDepth[$depth])) {
-                        $scrollDepth[$depth] = 0;
-                    }
-                    $scrollDepth[$depth] += $count;
-                }
-            }
+            // 一意のファイル名を生成
+            $filename = 'heatmaps/' . uniqid() . '.png';
+            $fullPath = storage_path('app/public/' . $filename);
 
-            // ユーザー数の集計
-            if (isset($data['metrics']['users'])) {
-                $totalUsers += $data['metrics']['users'];
-            }
+            // Browsershotを使用してスクリーンショットを取得
+            Browsershot::url($url)
+                ->setNodeBinary(env('NODE_BINARY', '/usr/local/bin/node'))
+                ->setNpmBinary(env('NPM_BINARY', '/usr/local/bin/npm'))
+                ->setChromePath(env('CHROME_BINARY', '/usr/bin/google-chrome'))
+                ->windowSize(1920, 1080)
+                ->fullPage()
+                ->waitUntilNetworkIdle()
+                ->timeout(30000) // 30秒のタイムアウト
+                ->save($fullPath);
+
+            Log::info('Screenshot captured', [
+                'url' => $url,
+                'path' => $filename
+            ]);
+
+            return $filename;
+        } catch (\Exception $e) {
+            Log::error('Screenshot capture failed', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return null;
         }
-
-        // サンプルデータの生成（実データがない場合）
-        if (empty($scrollDepth)) {
-            list($scrollDepth, $totalUsers) = self::generateSampleScrollData();
-        }
-
-        return [
-            'scrollDepth' => $scrollDepth,
-            'totalUsers' => $totalUsers ?: 100 // デフォルト値
-        ];
-    }
-
-    /**
-     * マウス移動ヒートマップデータ処理（クリックと同様の実装）
-     */
-    private static function processMoveData($snapshots, $pageUrl)
-    {
-        // 実際のデータがない場合はサンプルデータを返す
-        $movePoints = self::generateSampleMoveData();
-        return [
-            'movePoints' => $movePoints,
-            'totalMoves' => count($movePoints)
-        ];
-    }
-
-    /**
-     * 注目度ヒートマップデータ処理
-     */
-    private static function processAttentionData($snapshots, $pageUrl)
-    {
-        // 実際のデータがない場合はサンプルデータを返す
-        $attentionAreas = self::generateSampleAttentionData();
-        return [
-            'attentionAreas' => $attentionAreas
-        ];
-    }
-
-    /**
-     * サンプルクリックデータ生成（実データがない場合用）
-     */
-    private static function generateSampleClickData()
-    {
-        $clicks = [];
-        $clickCount = rand(100, 300); // サンプルとして100〜300個のクリックを生成
-
-        for ($i = 0; $i < $clickCount; $i++) {
-            $x = rand(50, 1200); // ブラウザの一般的な幅を想定
-            $y = rand(50, 2000); // ページの縦長を想定
-
-            // クリック位置が集中するエリアを作るための重み付け
-            if (rand(0, 100) < 30) { // 30%の確率で特定エリアに集中
-                $x = rand(300, 700);
-                $y = rand(200, 500);
-            }
-
-            $clicks[] = [
-                'x' => $x,
-                'y' => $y
-            ];
-        }
-
-        return $clicks;
-    }
-
-    /**
-     * サンプルスクロールデータ生成（実データがない場合用）
-     */
-    private static function generateSampleScrollData()
-    {
-        $scrollDepth = [];
-        $totalUsers = rand(80, 150);
-        $depths = [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000];
-
-        $currentUsers = $totalUsers;
-        foreach ($depths as $depth) {
-            $scrollDepth[$depth] = $currentUsers;
-            // ページの下に行くほどユーザー数が減少
-            $dropRate = rand(5, 15) / 100; // 5%〜15%の減少率
-            $currentUsers = max(1, (int)($currentUsers * (1 - $dropRate)));
-        }
-
-        return [$scrollDepth, $totalUsers];
-    }
-
-    /**
-     * サンプルマウス移動データ生成
-     */
-    private static function generateSampleMoveData()
-    {
-        $movePoints = [];
-        $moveCount = rand(300, 600);
-
-        for ($i = 0; $i < $moveCount; $i++) {
-            $x = rand(50, 1200);
-            $y = rand(50, 2000);
-
-            $movePoints[] = [
-                'x' => $x,
-                'y' => $y,
-                'duration' => rand(1, 5) // 滞在時間（秒）
-            ];
-        }
-
-        return $movePoints;
-    }
-
-    /**
-     * サンプル注目度データ生成
-     */
-    private static function generateSampleAttentionData()
-    {
-        $areas = [];
-        $areaCount = rand(10, 20);
-
-        for ($i = 0; $i < $areaCount; $i++) {
-            $x = rand(50, 1100);
-            $y = rand(50, 1900);
-            $width = rand(100, 300);
-            $height = rand(100, 300);
-
-            $areas[] = [
-                'x' => $x,
-                'y' => $y,
-                'width' => $width,
-                'height' => $height,
-                'attention' => rand(1, 100) / 100 // 0.01〜1.00の値
-            ];
-        }
-
-        return $areas;
     }
 
     /**
@@ -484,5 +285,105 @@ class Heatmap extends Model
     public function getDateRangeText()
     {
         return $this->date_range_start->format('Y/m/d') . ' 〜 ' . $this->date_range_end->format('Y/m/d');
+    }
+
+    /**
+     * スナップショットからヒートマップデータを生成
+     *
+     * @param int $websiteId
+     * @param string $pageUrl
+     * @param string $type
+     * @param \Carbon\Carbon $startDate
+     * @param \Carbon\Carbon $endDate
+     * @return array
+     */
+    private static function generateHeatmapData($websiteId, $pageUrl, $type, $startDate, $endDate)
+    {
+        try {
+            // データスナップショットから該当期間のデータを取得
+            $snapshots = DataSnapshot::where('website_id', $websiteId)
+                ->where('snapshot_type', 'analytics')
+                ->whereBetween('snapshot_date', [$startDate, $endDate])
+                ->get();
+
+            $heatmapData = [];
+
+            if ($type === 'click') {
+                $heatmapData = [
+                    'clicks' => [],
+                    'totalClicks' => 0
+                ];
+
+                foreach ($snapshots as $snapshot) {
+                    $data = $snapshot->data_json;
+
+                    // クリックイベントのデータを抽出
+                    if (isset($data['events']) && is_array($data['events'])) {
+                        foreach ($data['events'] as $event) {
+                            if (
+                                isset($event['page']) &&
+                                $event['page'] === $pageUrl &&
+                                isset($event['click_x']) &&
+                                isset($event['click_y'])
+                            ) {
+                                $heatmapData['clicks'][] = [
+                                    'x' => $event['click_x'],
+                                    'y' => $event['click_y'],
+                                    'timestamp' => $event['timestamp'] ?? null
+                                ];
+                                $heatmapData['totalClicks']++;
+                            }
+                        }
+                    }
+                }
+            } elseif ($type === 'scroll') {
+                $heatmapData = [
+                    'scrollDepth' => [],
+                    'totalUsers' => 0
+                ];
+
+                foreach ($snapshots as $snapshot) {
+                    $data = $snapshot->data_json;
+
+                    // スクロール深度データを抽出
+                    if (isset($data['pages'][$pageUrl]['scroll_depth'])) {
+                        foreach ($data['pages'][$pageUrl]['scroll_depth'] as $depth => $count) {
+                            if (!isset($heatmapData['scrollDepth'][$depth])) {
+                                $heatmapData['scrollDepth'][$depth] = 0;
+                            }
+                            $heatmapData['scrollDepth'][$depth] += $count;
+                        }
+                    }
+
+                    // 総ユーザー数を更新
+                    if (isset($data['pages'][$pageUrl]['users'])) {
+                        $heatmapData['totalUsers'] += $data['pages'][$pageUrl]['users'];
+                    }
+                }
+            }
+
+            Log::info('Heatmap data generated successfully', [
+                'website_id' => $websiteId,
+                'page_url' => $pageUrl,
+                'type' => $type,
+                'data_points' => $type === 'click' ?
+                    count($heatmapData['clicks']) :
+                    count($heatmapData['scrollDepth'])
+            ]);
+
+            return $heatmapData;
+        } catch (\Exception $e) {
+            Log::error('Failed to generate heatmap data', [
+                'error' => $e->getMessage(),
+                'website_id' => $websiteId,
+                'page_url' => $pageUrl,
+                'type' => $type
+            ]);
+
+            // エラーの場合は空のデータ構造を返す
+            return $type === 'click' ?
+                ['clicks' => [], 'totalClicks' => 0] :
+                ['scrollDepth' => [], 'totalUsers' => 0];
+        }
     }
 }

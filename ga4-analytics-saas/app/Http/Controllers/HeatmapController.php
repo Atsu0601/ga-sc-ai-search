@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class HeatmapController extends Controller
 {
@@ -129,6 +131,16 @@ class HeatmapController extends Controller
 
         if ($heatmap->website_id !== $website->id) {
             abort(404);
+        }
+
+        // デバッグ情報の追加
+        if (config('app.debug')) {
+            Log::debug('Heatmap details', [
+                'heatmap_id' => $heatmap->id,
+                'screenshot_path' => $heatmap->screenshot_path,
+                'exists' => $heatmap->screenshot_path ? Storage::exists($heatmap->screenshot_path) : false,
+                'public_url' => $heatmap->screenshot_path ? Storage::url($heatmap->screenshot_path) : null
+            ]);
         }
 
         $formattedData = $heatmap->formatData();
