@@ -7,7 +7,8 @@
             <div>
                 @if ($report->status === 'completed')
                     <a href="{{ route('reports.download', $report->id) }}"
-                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2">
+                        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mr-2"
+                        target="_blank">
                         PDFダウンロード
                     </a>
                 @endif

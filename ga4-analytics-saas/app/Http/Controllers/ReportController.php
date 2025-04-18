@@ -222,26 +222,36 @@ class ReportController extends Controller
     }
 
     /**
-     * PDFダウンロード
+     * PDFダウンロード（印刷プレビュー表示）
      */
     public function download(AnalysisReport $report)
     {
-        // 所有者確認
-        $this->authorize('view', $report->website);
+        try {
+            Log::info('PDF印刷プレビュー表示', [
+                'report_id' => $report->id
+            ]);
 
-        // レポートがまだ処理中または失敗した場合はリダイレクト
-        if ($report->status !== 'completed') {
-            return redirect()->route('reports.show', $report->id)
-                ->with('error', 'レポートの処理が完了していないためダウンロードできません。');
+            if ($report->status !== 'completed') {
+                return back()->with('error', 'レポートが完了していないためダウンロードできません。');
+            }
+
+            $components = $report->components()->orderBy('order')->get();
+            $recommendations = $report->recommendations()->orderBy('severity', 'desc')->get();
+
+            // 印刷用ビューを表示
+            return view('reports.print', [
+                'report' => $report,
+                'components' => $components,
+                'recommendations' => $recommendations
+            ]);
+        } catch (\Exception $e) {
+            Log::error('PDF印刷プレビューエラー', [
+                'report_id' => $report->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->with('error', 'PDFの生成中にエラーが発生しました。');
         }
-
-        // PDFが生成済みの場合
-        if ($report->file_path && file_exists(storage_path('app/' . $report->file_path))) {
-            return response()->download(storage_path('app/' . $report->file_path));
-        }
-
-        return redirect()->route('reports.show', $report->id)
-            ->with('error', 'PDFファイルが見つかりません。');
     }
 
     /**

@@ -53,7 +53,7 @@ class AnalysisReport extends Model
     /**
      * レポートコンポーネントとのリレーション
      */
-    public function components(): HasMany
+    public function components()
     {
         return $this->hasMany(ReportComponent::class, 'report_id');
     }
@@ -61,7 +61,7 @@ class AnalysisReport extends Model
     /**
      * AIレコメンデーションとのリレーション
      */
-    public function recommendations(): HasMany
+    public function recommendations()
     {
         return $this->hasMany(AiRecommendation::class, 'report_id');
     }
