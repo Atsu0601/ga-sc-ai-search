@@ -18,9 +18,9 @@ class DataSnapshot extends Model
      */
     protected $fillable = [
         'website_id',
+        'snapshot_date',
         'snapshot_type',
         'data_json',
-        'snapshot_date',
     ];
 
     /**
@@ -29,8 +29,8 @@ class DataSnapshot extends Model
      * @var array
      */
     protected $casts = [
-        'data_json' => 'array',
         'snapshot_date' => 'date',
+        'data_json' => 'array',
     ];
 
     /**

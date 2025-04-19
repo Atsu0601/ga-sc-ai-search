@@ -12,6 +12,7 @@
         "php": "^8.2",
         "google/analytics-data": "^0.22.2",
         "google/apiclient": "^2.18",
+        "google/apiclient-services": "^0.396.0",
         "guzzlehttp/guzzle": "^7.9",
         "laravel/cashier": "^15.6",
         "laravel/framework": "^12.0",
