@@ -89,11 +89,6 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::get('/websites/{website}/snapshots/{id}', [DataSnapshotController::class, 'show'])->name('snapshots.show');
     Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])->name('snapshots.create');
     Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])->name('snapshots.data');
-
-    // ヒートマップ管理
-    Route::resource('websites.heatmaps', HeatmapController::class);
-    // ヒートマップデータの更新処理
-    Route::get('/websites/{website}/heatmaps/{heatmap}/refresh-data', [HeatmapController::class, 'refreshData'])->name('websites.heatmaps.refresh-data');
 });
 
 // Stripe Webhook

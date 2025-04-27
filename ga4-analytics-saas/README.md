@@ -134,3 +134,62 @@ $schedule->command('analytics:fetch-data')
 ```
 
 これにより、Docker環境でcronを使用したスケジュールタスクの実行が可能になります。supervisorと比べてシンプルな構成で、開発環境での運用が容易になります。
+
+## 定期実行の設定
+
+### GA4・Search Consoleデータの自動取得
+
+アプリケーションは毎日午前1時にGA4とSearch Consoleのデータを自動取得します。この機能を有効にするには、以下の手順でcronを設定してください。
+
+#### Cronの設定手順
+
+1. cronの編集を開く
+```bash
+crontab -e
+```
+
+2. 以下の行を追加
+```bash
+* * * * * cd /ga4-analytics-saas && php artisan schedule:run >> /ga4-analytics-saas/storage/logs/cron.log 2>&1
+```
+
+#### 実行スケジュール
+
+- 実行コマンド: `analytics:fetch-data`
+- 実行時間: 毎日午前1時
+- ログファイル: `/ga4-analytics-saas/storage/logs/analytics-fetch.log`
+
+#### ログの確認方法
+
+```bash
+# cronのログを確認
+tail -f /ga4-analytics-saas/storage/logs/cron.log
+
+# データ取得のログを確認
+tail -f /ga4-analytics-saas/storage/logs/analytics-fetch.log
+```
+
+#### 注意事項
+
+- サーバーのタイムゾーンが正しく設定されていることを確認してください
+- ログファイルのパーミッションが適切に設定されていることを確認してください
+- cronユーザーがアプリケーションディレクトリにアクセスできることを確認してください
+
+#### トラブルシューティング
+
+データ取得が実行されない場合は、以下を確認してください：
+
+1. cronが正しく設定されているか
+```bash
+crontab -l
+```
+
+2. ログファイルのパーミッション
+```bash
+ls -l /ga4-analytics-saas/storage/logs/
+```
+
+3. アプリケーションのログで詳細なエラー内容を確認
+```bash
+tail -f /ga4-analytics-saas/storage/logs/laravel.log
+```

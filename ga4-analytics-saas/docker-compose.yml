@@ -1,3 +1,4 @@
+version: "3"
 services:
     laravel.ga-analytics-saas:
         build:
@@ -26,7 +27,6 @@ services:
             - redis
             - meilisearch
             - mailpit
-            - selenium
     mysql:
         image: "mysql/mysql-server:8.0"
         ports:
@@ -106,20 +106,36 @@ services:
             - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
         networks:
             - sail
-    selenium:
-        image: selenium/standalone-chromium
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-        volumes:
-            - "/dev/shm:/dev/shm"
-        networks:
-            - sail
     scheduler:
         build:
             context: ./docker/scheduler
             dockerfile: Dockerfile
         volumes:
             - ".:/var/www/html"
+        networks:
+            - sail
+        depends_on:
+            - mysql
+    cron:
+        build:
+            context: ./docker/cron
+            dockerfile: Dockerfile
+        volumes:
+            - .:/var/www/html
+            - ./storage/logs:/var/www/html/storage/logs
+        environment:
+            DB_HOST: mysql
+            DB_DATABASE: ${DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
+            MAIL_HOST: ${MAIL_HOST}
+            MAIL_PORT: ${MAIL_PORT}
+            MAIL_USERNAME: ${MAIL_USERNAME}
+            MAIL_PASSWORD: ${MAIL_PASSWORD}
+            MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+            MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+            ADMIN_EMAIL: ${ADMIN_EMAIL}
+            TECH_LEAD_EMAIL: ${TECH_LEAD_EMAIL}
         networks:
             - sail
         depends_on:

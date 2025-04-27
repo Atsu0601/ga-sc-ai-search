@@ -114,10 +114,6 @@
                                                 class="text-indigo-600 hover:text-indigo-900 mr-3">
                                                 詳細
                                             </a>
-                                            <a href="{{ route('websites.heatmaps.index', $website->id) }}"
-                                                class="text-purple-600 hover:text-purple-900 mr-3">
-                                                ヒートマップ
-                                            </a>
                                             <a href="{{ route('websites.edit', $website->id) }}"
                                                 class="text-yellow-600 hover:text-yellow-900 mr-3">
                                                 編集
