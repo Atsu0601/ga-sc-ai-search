@@ -144,11 +144,11 @@
                             @endphp
                             @foreach ($component->data_json['devices'] as $device)
                                 <tr>
-                                    <td>{{ match ($device['device']) {
+                                    <td>{{ match ($device['deviceCategory']) {
                                         'desktop' => 'デスクトップ',
                                         'mobile' => 'モバイル',
                                         'tablet' => 'タブレット',
-                                        default => $device['device'],
+                                        default => $device['deviceCategory'],
                                     } }}
                                     </td>
                                     <td>{{ number_format($device['users']) }}</td>
@@ -183,7 +183,7 @@
                             </tr>
                             @foreach ($component->data_json['pages'] as $page)
                                 <tr>
-                                    <td>{{ $page['page'] }}</td>
+                                    <td>{{ $page['pagePath'] }}</td>
                                     <td>{{ number_format($page['pageviews']) }}</td>
                                     <td>
                                         @if (isset($page['avgTimeOnPage']))

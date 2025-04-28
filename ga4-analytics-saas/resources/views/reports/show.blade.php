@@ -276,11 +276,11 @@
                                                     <div class="bg-blue-50 rounded p-3">
                                                         <p class="text-sm text-gray-600">主要デバイス</p>
                                                         <p class="font-bold">
-                                                            {{ match ($primaryDevice['device']) {
+                                                            {{ match ($primaryDevice['deviceCategory']) {
                                                                 'desktop' => 'デスクトップ',
                                                                 'mobile' => 'モバイル',
                                                                 'tablet' => 'タブレット',
-                                                                default => $primaryDevice['device'],
+                                                                default => $primaryDevice['deviceCategory'],
                                                             } }}
                                                         </p>
                                                     </div>
@@ -321,11 +321,11 @@
                                                             <tr>
                                                                 <td
                                                                     class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                    {{ match ($device['device']) {
+                                                                    {{ match ($device['deviceCategory']) {
                                                                         'desktop' => 'デスクトップ',
                                                                         'mobile' => 'モバイル',
                                                                         'tablet' => 'タブレット',
-                                                                        default => $device['device'],
+                                                                        default => $device['deviceCategory'],
                                                                     } }}
                                                                 </td>
                                                                 <td
@@ -453,7 +453,7 @@
                                                         <tr>
                                                             <td
                                                                 class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ $page['page'] }}
+                                                                {{ $page['pagePath'] }}
                                                             </td>
                                                             <td
                                                                 class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
