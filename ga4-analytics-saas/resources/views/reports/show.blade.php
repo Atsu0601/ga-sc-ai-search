@@ -103,535 +103,674 @@
             </div>
 
             @if ($report->status === 'completed')
-                <!-- AIレコメンデーション -->
-                @if ($recommendations->isNotEmpty())
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div class="p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-xl font-bold">AI改善提案</h2>
-                                <div class="flex gap-2">
-                                    @php
-                                        $highPriority = $recommendations->where('severity', 'high')->count();
-                                        $mediumPriority = $recommendations->where('severity', 'medium')->count();
-                                        $lowPriority = $recommendations->where('severity', 'low')->count();
-                                    @endphp
-                                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">重要:
-                                        {{ $highPriority }}</span>
-                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">中:
-                                        {{ $mediumPriority }}</span>
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">軽:
-                                        {{ $lowPriority }}</span>
+                {{-- 基本メトリクス --}}
+                <div class="bg-white rounded shadow p-6 mb-8">
+                    <h3 class="text-lg font-bold mb-4">基本メトリクス</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">総ユーザー数</div>
+                            <div class="text-2xl font-bold">{{ $data['metrics']['totalUsers'] }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">新規ユーザー数</div>
+                            <div class="text-2xl font-bold">{{ $data['metrics']['newUsers'] }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">セッション数</div>
+                            <div class="text-2xl font-bold">{{ $data['metrics']['sessions'] }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">ページビュー</div>
+                            <div class="text-2xl font-bold">{{ $data['metrics']['pageviews'] }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">直帰率</div>
+                            <div class="text-2xl font-bold">{{ number_format($data['metrics']['bounceRate'], 2) }}%
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">平均セッション時間</div>
+                            <div class="text-2xl font-bold">{{ round($data['metrics']['avgSessionDuration'], 1) }}秒
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">エンゲージメント率</div>
+                            <div class="text-2xl font-bold">{{ number_format($data['metrics']['engagementRate'], 2) }}%
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">コンバージョン数</div>
+                            <div class="text-2xl font-bold">{{ $data['metrics']['keyEvents'] ?? 0 }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded p-4 flex flex-col items-center">
+                            <div class="text-gray-500 text-xs">コンバージョン率</div>
+                            @php
+                                $conversionRate = 0;
+                                if (!empty($data['metrics']['sessions']) && !empty($data['metrics']['keyEvents'])) {
+                                    $conversionRate =
+                                        $data['metrics']['sessions'] > 0
+                                            ? ($data['metrics']['keyEvents'] / $data['metrics']['sessions']) * 100
+                                            : 0;
+                                }
+                            @endphp
+                            <div class="text-2xl font-bold">{{ number_format($conversionRate, 2) }}%</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <canvas id="metricsBarChart"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="metricsPieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- トレンドデータ --}}
+                <div class="bg-white rounded shadow p-6 mb-8">
+                    <h3 class="text-lg font-bold mb-4">日別トレンド</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <canvas id="trendLineChart"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="trendBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- デバイスデータ --}}
+                <div class="bg-white rounded shadow p-6 mb-8">
+                    <h3 class="text-lg font-bold mb-4">デバイスカテゴリ</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
+                        <div>
+                            <canvas id="devicePieChart"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="deviceBarChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th>カテゴリ</th>
+                                    <th>OS</th>
+                                    <th>ブラウザ</th>
+                                    <th>ユーザー数</th>
+                                    <th>セッション</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($data['dimensions']['devices'] as $row)
+                                    <tr>
+                                        <td>{{ $row['deviceCategory'] }}</td>
+                                        <td>{{ $row['operatingSystem'] }}</td>
+                                        <td>{{ $row['browser'] }}</td>
+                                        <td>{{ $row['users'] }}</td>
+                                        <td>{{ $row['sessions'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- トラフィックソース --}}
+                <div class="bg-white rounded shadow p-6 mb-8">
+                    <h3 class="text-lg font-bold mb-4">トラフィックソース</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
+                        <div>
+                            <canvas id="sourceBarChart"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="sourcePieChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th>ソース</th>
+                                    <th>メディア</th>
+                                    <th>ユーザー数</th>
+                                    <th>セッション</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($data['dimensions']['sources'] as $row)
+                                    <tr>
+                                        <td>{{ $row['source'] }}</td>
+                                        <td>{{ $row['medium'] }}</td>
+                                        <td>{{ $row['users'] }}</td>
+                                        <td>{{ $row['sessions'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- ページデータ --}}
+                <div class="bg-white rounded shadow p-6 mb-8">
+                    <h3 class="text-lg font-bold mb-4">ページ別データ</h3>
+                    <div class="mb-4">
+                        <canvas id="pageBarChart"></canvas>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th>ページ</th>
+                                    <th>タイトル</th>
+                                    <th>ページビュー</th>
+                                    <th>ユーザー数</th>
+                                    <th>セッション</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($data['dimensions']['pages'] as $row)
+                                    <tr>
+                                        <td>{{ $row['pagePath'] }}</td>
+                                        <td>{{ $row['pageTitle'] }}</td>
+                                        <td>{{ $row['pageviews'] }}</td>
+                                        <td>{{ $row['users'] }}</td>
+                                        <td>{{ $row['sessions'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- 地域データ --}}
+                <div class="bg-white rounded shadow p-6 mb-8">
+                    <h3 class="text-lg font-bold mb-4">地域データ</h3>
+                    <div class="mb-4">
+                        <canvas id="locationRadarChart"></canvas>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr>
+                                    <th>国</th>
+                                    <th>地域</th>
+                                    <th>市区町村</th>
+                                    <th>ユーザー数</th>
+                                    <th>セッション</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($data['dimensions']['locations'] as $row)
+                                    <tr>
+                                        <td>{{ $row['country'] }}</td>
+                                        <td>{{ $row['region'] }}</td>
+                                        <td>{{ $row['city'] }}</td>
+                                        <td>{{ $row['users'] }}</td>
+                                        <td>{{ $row['sessions'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- コンバージョン詳細分析 --}}
+                @if (isset($data['dimensions']['keyevents']) && count($data['dimensions']['keyevents']) > 0)
+                    <div class="bg-white rounded shadow p-6 mb-8">
+                        <h3 class="text-lg font-bold mb-4">コンバージョン詳細分析</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
+                            <div>
+                                <h4 class="font-semibold mb-2">トラフィックソース別コンバージョン</h4>
+                                <canvas id="conversionSourceBarChart"></canvas>
+                                <div class="overflow-x-auto mt-2">
+                                    <table class="min-w-full text-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>ソース/メディア</th>
+                                                <th>コンバージョン数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                $conversionBySource = [];
+                                                foreach ($data['dimensions']['keyevents'] as $event) {
+                                                    $source =
+                                                        ($event['source'] ?? '-') . ' / ' . ($event['medium'] ?? '-');
+                                                    if (!isset($conversionBySource[$source])) {
+                                                        $conversionBySource[$source] = 0;
+                                                    }
+                                                    $conversionBySource[$source] += $event['keyEvents'];
+                                                }
+                                            @endphp
+                                            @foreach ($conversionBySource as $key => $count)
+                                                <tr>
+                                                    <td>{{ $key }}</td>
+                                                    <td>{{ $count }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
-                            <div class="space-y-4">
-                                @foreach ($recommendations as $recommendation)
-                                    <div class="p-4 rounded-lg {{ $recommendation->severity_css_class }}">
-                                        <div class="flex items-start">
-                                            <div
-                                                class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white mr-3">
-                                                <svg class="h-5 w-5 {{ $recommendation->severity === 'critical' ? 'text-red-600' : ($recommendation->severity === 'warning' ? 'text-yellow-600' : 'text-blue-600') }}"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    @if ($recommendation->category === 'seo')
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                    @elseif ($recommendation->category === 'performance')
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    @elseif ($recommendation->category === 'content')
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    @else
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                                    @endif
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h4 class="font-medium">{{ $recommendation->category_japanese }}</h4>
-                                                <p class="mt-1">{{ $recommendation->content }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
+                            <div>
+                                <h4 class="font-semibold mb-2">ページ別コンバージョン</h4>
+                                <canvas id="conversionPageBarChart"></canvas>
+                                <div class="overflow-x-auto mt-2">
+                                    <table class="min-w-full text-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>ページ</th>
+                                                <th>コンバージョン数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                $conversionByPage = [];
+                                                foreach ($data['dimensions']['keyevents'] as $event) {
+                                                    $page = $event['pagePath'] ?? '-';
+                                                    if (!isset($conversionByPage[$page])) {
+                                                        $conversionByPage[$page] = 0;
+                                                    }
+                                                    $conversionByPage[$page] += $event['keyEvents'];
+                                                }
+                                            @endphp
+                                            @foreach ($conversionByPage as $page => $count)
+                                                <tr>
+                                                    <td>{{ $page }}</td>
+                                                    <td>{{ $count }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
+                            <div>
+                                <h4 class="font-semibold mb-2">デバイス別コンバージョン</h4>
+                                <canvas id="conversionDevicePieChart"></canvas>
+                                <div class="overflow-x-auto mt-2">
+                                    <table class="min-w-full text-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>デバイス</th>
+                                                <th>コンバージョン数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                $conversionByDevice = [];
+                                                foreach ($data['dimensions']['keyevents'] as $event) {
+                                                    $device = $event['deviceCategory'] ?? '-';
+                                                    if (!isset($conversionByDevice[$device])) {
+                                                        $conversionByDevice[$device] = 0;
+                                                    }
+                                                    $conversionByDevice[$device] += $event['keyEvents'];
+                                                }
+                                            @endphp
+                                            @foreach ($conversionByDevice as $device => $count)
+                                                <tr>
+                                                    <td>{{ $device }}</td>
+                                                    <td>{{ $count }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-2">地域別コンバージョン</h4>
+                                <canvas id="conversionLocationBarChart"></canvas>
+                                <div class="overflow-x-auto mt-2">
+                                    <table class="min-w-full text-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>国</th>
+                                                <th>コンバージョン数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                $conversionByCity = [];
+                                                foreach ($data['dimensions']['keyevents'] as $event) {
+                                                    $city = $event['city'] ?? '-';
+                                                    if (!isset($conversionByCity[$city])) {
+                                                        $conversionByCity[$city] = 0;
+                                                    }
+                                                    $conversionByCity[$city] += $event['keyEvents'];
+                                                }
+                                            @endphp
+                                            @foreach ($conversionByCity as $city => $count)
+                                                <tr>
+                                                    <td>{{ $city }}</td>
+                                                    <td>{{ $count }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-2">曜日別コンバージョン</h4>
+                            <canvas id="conversionDayBarChart"></canvas>
+                            <div class="overflow-x-auto mt-2">
+                                <table class="min-w-full text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>曜日</th>
+                                            <th>コンバージョン数</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @php
+                                            $conversionByDay = [];
+                                            $en2ja = [
+                                                'Sunday' => '日曜日',
+                                                'Monday' => '月曜日',
+                                                'Tuesday' => '火曜日',
+                                                'Wednesday' => '水曜日',
+                                                'Thursday' => '木曜日',
+                                                'Friday' => '金曜日',
+                                                'Saturday' => '土曜日',
+                                            ];
+                                            foreach ($data['dimensions']['keyevents'] as $event) {
+                                                $enDay = $event['dayOfWeekName'] ?? '-';
+                                                $jaDay = $en2ja[$enDay] ?? $enDay;
+                                                if (!isset($conversionByDay[$jaDay])) {
+                                                    $conversionByDay[$jaDay] = 0;
+                                                }
+                                                $conversionByDay[$jaDay] += $event['keyEvents'];
+                                            }
+                                            $weekOrder = [
+                                                '日曜日',
+                                                '月曜日',
+                                                '火曜日',
+                                                '水曜日',
+                                                '木曜日',
+                                                '金曜日',
+                                                '土曜日',
+                                            ];
+                                        @endphp
+                                        @foreach ($weekOrder as $day)
+                                            <tr>
+                                                <td>{{ $day }}</td>
+                                                <td>{{ $conversionByDay[$day] ?? 0 }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
-                @endif
-
-                <!-- レポートコンポーネント -->
-                @if (!$components->isEmpty())
-                    @foreach ($components as $component)
-                        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                            <div class="p-6 bg-white border-b border-gray-200">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $component->title }}</h3>
-
-                                @if ($component->component_type === 'text')
-                                    <div class="prose max-w-none">
-                                        {!! $component->data_json['content'] !!}
-                                    </div>
-                                @elseif ($component->component_type === 'chart')
-                                    <div class="h-80">
-                                        <canvas id="chart-{{ $component->id }}"></canvas>
-                                    </div>
-                                @elseif ($component->component_type === 'table')
-                                    <div class="overflow-x-auto">
-                                        <table class="min-w-full divide-y divide-gray-200">
-                                            <thead class="bg-gray-50">
-                                                <tr>
-                                                    @foreach ($component->data_json['headers'] as $header)
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            {{ $header }}
-                                                        </th>
-                                                    @endforeach
-                                                </tr>
-                                            </thead>
-                                            <tbody class="bg-white divide-y divide-gray-200">
-                                                @foreach ($component->data_json['rows'] as $row)
-                                                    <tr>
-                                                        @foreach ($row as $cell)
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ $cell }}
-                                                            </td>
-                                                        @endforeach
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @elseif ($component->component_type === 'heatmap')
-                                    <div class="h-80">
-                                        <canvas id="heatmap-{{ $component->id }}"></canvas>
-                                    </div>
-                                @elseif ($component->component_type === 'metrics')
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <div class="grid grid-cols-2 gap-4 mb-4">
-                                                @foreach ($component->data_json as $key => $value)
-                                                    @if (!in_array($key, ['headers', 'rows', 'previous_users', 'previous_sessions', 'previous_pageviews', 'trend']))
-                                                        <div class="bg-gray-50 rounded-lg p-4">
-                                                            <p class="text-sm text-gray-500">
-                                                                {{ match ($key) {
-                                                                    'users' => 'ユーザー数',
-                                                                    'sessions' => 'セッション数',
-                                                                    'pageviews' => 'ページビュー数',
-                                                                    'bounce_rate' => '直帰率',
-                                                                    'avg_session_duration' => '平均セッション時間',
-                                                                    default => $key,
-                                                                } }}
-                                                            </p>
-                                                            <p class="text-2xl font-bold">
-                                                                @if ($key === 'bounce_rate')
-                                                                    {{ number_format($value, 1) }}%
-                                                                @elseif($key === 'avg_session_duration')
-                                                                    {{ gmdate('i:s', $value) }}
-                                                                @else
-                                                                    {{ number_format($value) }}
-                                                                @endif
-                                                            </p>
-                                                            @if (isset($component->data_json['previous_' . $key]))
-                                                                @php
-                                                                    $change =
-                                                                        (($value -
-                                                                            $component->data_json['previous_' . $key]) /
-                                                                            $component->data_json['previous_' . $key]) *
-                                                                        100;
-                                                                @endphp
-                                                                <p
-                                                                    class="text-sm {{ $change >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                                                    {{ $change >= 0 ? '↑' : '↓' }}
-                                                                    {{ abs(number_format($change, 1)) }}%
-                                                                </p>
-                                                            @endif
-                                                        </div>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <canvas id="metricsChart-{{ $component->id }}"></canvas>
-                                            @if (isset($component->data_json['trend']))
-                                                <canvas id="trendChart-{{ $component->id }}" class="mt-4"></canvas>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @elseif ($component->component_type === 'devices')
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <div class="mb-4">
-                                                <h3 class="text-lg font-semibold mb-2">デバイス別アクセス分析</h3>
-                                                <div class="grid grid-cols-3 gap-2">
-                                                    @php
-                                                        $totalUsers = collect($component->data_json['devices'])->sum(
-                                                            'users',
-                                                        );
-                                                        $primaryDevice = collect($component->data_json['devices'])
-                                                            ->sortByDesc('users')
-                                                            ->first();
-                                                    @endphp
-                                                    <div class="bg-blue-50 rounded p-3">
-                                                        <p class="text-sm text-gray-600">主要デバイス</p>
-                                                        <p class="font-bold">
-                                                            {{ match ($primaryDevice['deviceCategory']) {
-                                                                'desktop' => 'デスクトップ',
-                                                                'mobile' => 'モバイル',
-                                                                'tablet' => 'タブレット',
-                                                                default => $primaryDevice['deviceCategory'],
-                                                            } }}
-                                                        </p>
-                                                    </div>
-                                                    <div class="bg-green-50 rounded p-3">
-                                                        <p class="text-sm text-gray-600">総ユーザー数</p>
-                                                        <p class="font-bold">{{ number_format($totalUsers) }}</p>
-                                                    </div>
-                                                    <div class="bg-purple-50 rounded p-3">
-                                                        <p class="text-sm text-gray-600">モバイル比率</p>
-                                                        @php
-                                                            $mobileUsers =
-                                                                collect($component->data_json['devices'])
-                                                                    ->where('device', 'mobile')
-                                                                    ->first()['users'] ?? 0;
-                                                            $mobileRatio = ($mobileUsers / $totalUsers) * 100;
-                                                        @endphp
-                                                        <p class="font-bold">{{ number_format($mobileRatio, 1) }}%</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="overflow-x-auto">
-                                                <table class="min-w-full divide-y divide-gray-200">
-                                                    <thead class="bg-gray-50">
-                                                        <tr>
-                                                            <th
-                                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                デバイス</th>
-                                                            <th
-                                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                ユーザー数</th>
-                                                            <th
-                                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                割合</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="bg-white divide-y divide-gray-200">
-                                                        @foreach ($component->data_json['devices'] as $device)
-                                                            <tr>
-                                                                <td
-                                                                    class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                    {{ match ($device['deviceCategory']) {
-                                                                        'desktop' => 'デスクトップ',
-                                                                        'mobile' => 'モバイル',
-                                                                        'tablet' => 'タブレット',
-                                                                        default => $device['deviceCategory'],
-                                                                    } }}
-                                                                </td>
-                                                                <td
-                                                                    class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                    {{ number_format($device['users']) }}
-                                                                </td>
-                                                                <td
-                                                                    class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                    {{ number_format(($device['users'] / $totalUsers) * 100, 1) }}%
-                                                                </td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <canvas id="devicesChart-{{ $component->id }}"></canvas>
-                                            @if (isset($component->data_json['device_trend']))
-                                                <canvas id="deviceTrendChart-{{ $component->id }}"
-                                                    class="mt-4"></canvas>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @elseif ($component->component_type === 'sources')
-                                    <div class="mt-4">
-                                        <div class="overflow-x-auto">
-                                            <table class="min-w-full divide-y divide-gray-200">
-                                                <thead class="bg-gray-50">
-                                                    <tr>
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            ソース</th>
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            ユーザー数</th>
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            割合</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="bg-white divide-y divide-gray-200">
-                                                    @php
-                                                        // 総ユーザー数を計算
-                                                        $totalUsers = collect($component->data_json['sources'])->sum(
-                                                            'users',
-                                                        );
-                                                    @endphp
-
-                                                    @foreach ($component->data_json['sources'] as $source)
-                                                        <tr>
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ match ($source['source']) {
-                                                                    'google' => 'Google',
-                                                                    '(direct)' => '直接訪問',
-                                                                    '(not set)' => '未設定',
-                                                                    'search.fenrir-inc.com' => 'Fenrir検索',
-                                                                    'biztools.corp.google.com' => 'Google Biztools',
-                                                                    default => $source['source'],
-                                                                } }}
-                                                            </td>
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ number_format($source['users']) }}
-                                                            </td>
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ number_format(($source['users'] / $totalUsers) * 100, 1) }}%
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                @elseif ($component->component_type === 'pages')
-                                    <div class="mb-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                            @php
-                                                $totalPageviews = collect($component->data_json['pages'])->sum(
-                                                    'pageviews',
-                                                );
-                                                $avgTimeOnPage = collect($component->data_json['pages'])->avg(
-                                                    'avgTimeOnPage',
-                                                );
-                                                $avgBounceRate = collect($component->data_json['pages'])->avg(
-                                                    'bounceRate',
-                                                );
-                                            @endphp
-                                            <div class="bg-white rounded-lg shadow p-4">
-                                                <p class="text-sm text-gray-500">総ページビュー</p>
-                                                <p class="text-2xl font-bold">{{ number_format($totalPageviews) }}</p>
-                                            </div>
-                                            <div class="bg-white rounded-lg shadow p-4">
-                                                <p class="text-sm text-gray-500">平均滞在時間</p>
-                                                <p class="text-2xl font-bold">{{ gmdate('i:s', $avgTimeOnPage) }}</p>
-                                            </div>
-                                            <div class="bg-white rounded-lg shadow p-4">
-                                                <p class="text-sm text-gray-500">平均直帰率</p>
-                                                <p class="text-2xl font-bold">{{ number_format($avgBounceRate, 1) }}%
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="overflow-x-auto">
-                                            <table class="min-w-full divide-y divide-gray-200">
-                                                <thead class="bg-gray-50">
-                                                    <tr>
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            ページパス
-                                                        </th>
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            ページビュー数
-                                                        </th>
-                                                        <th
-                                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                            平均滞在時間
-                                                        </th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="bg-white divide-y divide-gray-200">
-                                                    @foreach ($component->data_json['pages'] as $page)
-                                                        <tr>
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ $page['pagePath'] }}
-                                                            </td>
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                {{ number_format($page['pageviews']) }}
-                                                            </td>
-                                                            <td
-                                                                class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                @if (isset($page['avgTimeOnPage']))
-                                                                    {{ gmdate('i:s', $page['avgTimeOnPage']) }}
-                                                                @else
-                                                                    -
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
                 @endif
             @endif
         </div>
     </div>
 
-    @push('scripts')
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                @foreach ($components as $component)
-                    @if ($component->component_type === 'metrics')
-                        // メトリクスチャートの描画
-                        new Chart(document.getElementById('metricsChart-{{ $component->id }}'), {
-                            type: 'bar',
-                            data: {
-                                labels: ['ユーザー数', 'セッション数', 'ページビュー数'],
-                                datasets: [{
-                                    label: '主要指標',
-                                    data: [
-                                        {{ $component->data_json['users'] ?? 0 }},
-                                        {{ $component->data_json['sessions'] ?? 0 }},
-                                        {{ $component->data_json['pageviews'] ?? 0 }}
-                                    ],
-                                    backgroundColor: [
-                                        'rgba(54, 162, 235, 0.5)',
-                                        'rgba(75, 192, 192, 0.5)',
-                                        'rgba(153, 102, 255, 0.5)'
-                                    ],
-                                    borderColor: [
-                                        'rgba(54, 162, 235, 1)',
-                                        'rgba(75, 192, 192, 1)',
-                                        'rgba(153, 102, 255, 1)'
-                                    ],
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true
-                                    }
-                                }
-                            }
-                        });
-                    @elseif ($component->component_type === 'devices')
-                        // デバイスチャートの描画
-                        new Chart(document.getElementById('devicesChart-{{ $component->id }}'), {
-                            type: 'pie',
-                            data: {
-                                labels: {!! json_encode(
-                                    collect($component->data_json['devices'])->pluck('device')->map(function ($device) {
-                                            return match ($device) {
-                                                'desktop' => 'デスクトップ',
-                                                'mobile' => 'モバイル',
-                                                'tablet' => 'タブレット',
-                                                default => $device,
-                                            };
-                                        }),
-                                ) !!},
-                                datasets: [{
-                                    data: {!! json_encode(collect($component->data_json['devices'])->pluck('users')) !!},
-                                    backgroundColor: [
-                                        'rgba(54, 162, 235, 0.5)',
-                                        'rgba(75, 192, 192, 0.5)',
-                                        'rgba(153, 102, 255, 0.5)'
-                                    ],
-                                    borderColor: [
-                                        'rgba(54, 162, 235, 1)',
-                                        'rgba(75, 192, 192, 1)',
-                                        'rgba(153, 102, 255, 1)'
-                                    ],
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: {
-                                    legend: {
-                                        position: 'right'
-                                    }
-                                }
-                            }
-                        });
+    {{-- Chart.js CDN --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 基本メトリクス
+        const metrics = @json($data['metrics']);
+        new Chart(document.getElementById('metricsBarChart'), {
+            type: 'bar',
+            data: {
+                labels: ['ユーザー数', '新規ユーザー数', 'セッション数', 'ページビュー'],
+                datasets: [{
+                    label: '基本メトリクス',
+                    data: [metrics.totalUsers, metrics.newUsers, metrics.sessions, metrics.pageviews],
+                    backgroundColor: ['#3b82f6', '#f59e42', '#10b981', '#6366f1']
+                }]
+            }
+        });
+        new Chart(document.getElementById('metricsPieChart'), {
+            type: 'pie',
+            data: {
+                labels: ['直帰率', 'エンゲージメント率'],
+                datasets: [{
+                    data: [metrics.bounceRate, metrics.engagementRate],
+                    backgroundColor: ['#f59e42', '#10b981']
+                }]
+            }
+        });
 
-                        @if (isset($component->data_json['device_trend']))
-                            // デバイストレンドチャートの描画
-                            new Chart(document.getElementById('deviceTrendChart-{{ $component->id }}'), {
-                                type: 'line',
-                                data: {
-                                    labels: {!! json_encode($component->data_json['device_trend']['dates']) !!},
-                                    datasets: [{
-                                            label: 'デスクトップ',
-                                            data: {!! json_encode($component->data_json['device_trend']['desktop']) !!},
-                                            borderColor: 'rgba(54, 162, 235, 1)',
-                                            tension: 0.1
-                                        },
-                                        {
-                                            label: 'モバイル',
-                                            data: {!! json_encode($component->data_json['device_trend']['mobile']) !!},
-                                            borderColor: 'rgba(75, 192, 192, 1)',
-                                            tension: 0.1
-                                        },
-                                        {
-                                            label: 'タブレット',
-                                            data: {!! json_encode($component->data_json['device_trend']['tablet']) !!},
-                                            borderColor: 'rgba(153, 102, 255, 1)',
-                                            tension: 0.1
-                                        }
-                                    ]
-                                },
-                                options: {
-                                    responsive: true,
-                                    plugins: {
-                                        title: {
-                                            display: true,
-                                            text: 'デバイス別トレンド'
-                                        }
-                                    }
-                                }
-                            });
-                        @endif
-                    @endif
+        // トレンドデータ
+        const trend = @json($data['dimensions']['trends']);
+        const trendLabels = trend.map(d => d.date);
+        const trendUsers = trend.map(d => d.users);
+        const trendSessions = trend.map(d => d.sessions);
+        new Chart(document.getElementById('trendLineChart'), {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                        label: 'ユーザー数',
+                        data: trendUsers,
+                        borderColor: '#3b82f6',
+                        fill: false
+                    },
+                    {
+                        label: 'セッション数',
+                        data: trendSessions,
+                        borderColor: '#f59e42',
+                        fill: false
+                    }
+                ]
+            }
+        });
+        new Chart(document.getElementById('trendBarChart'), {
+            type: 'bar',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                        label: 'ユーザー数',
+                        data: trendUsers,
+                        backgroundColor: '#3b82f6'
+                    },
+                    {
+                        label: 'セッション数',
+                        data: trendSessions,
+                        backgroundColor: '#f59e42'
+                    }
+                ]
+            }
+        });
 
-                    @if (isset($component->data_json['trend']))
-                        // トレンドチャートの描画
-                        new Chart(document.getElementById('trendChart-{{ $component->id }}'), {
-                            type: 'line',
-                            data: {
-                                labels: {!! json_encode($component->data_json['trend']['dates']) !!},
-                                datasets: [{
-                                    label: 'ユーザー数推移',
-                                    data: {!! json_encode($component->data_json['trend']['users']) !!},
-                                    borderColor: 'rgba(54, 162, 235, 1)',
-                                    fill: false,
-                                    tension: 0.1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: {
-                                    title: {
-                                        display: true,
-                                        text: 'ユーザー数の推移'
-                                    }
-                                },
-                                scales: {
-                                    y: {
-                                        beginAtZero: true
-                                    }
-                                }
-                            }
-                        });
-                    @endif
-                @endforeach
+        // デバイスデータ
+        const deviceData = @json($data['dimensions']['devices']);
+        const deviceLabels = [...new Set(deviceData.map(d => d.deviceCategory))];
+        const deviceCounts = deviceLabels.map(label => deviceData.filter(d => d.deviceCategory === label).reduce((sum, d) =>
+            sum + d.users, 0));
+        new Chart(document.getElementById('devicePieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: deviceLabels,
+                datasets: [{
+                    data: deviceCounts,
+                    backgroundColor: ['#3b82f6', '#f59e42', '#10b981']
+                }]
+            }
+        });
+        new Chart(document.getElementById('deviceBarChart'), {
+            type: 'bar',
+            data: {
+                labels: deviceLabels,
+                datasets: [{
+                    label: 'ユーザー数',
+                    data: deviceCounts,
+                    backgroundColor: '#3b82f6'
+                }]
+            }
+        });
+
+        // トラフィックソース
+        const sourceData = @json($data['dimensions']['sources']);
+        const sourceLabels = sourceData.map(d => d.source + ' / ' + d.medium);
+        const sourceUsers = sourceData.map(d => d.users);
+        new Chart(document.getElementById('sourceBarChart'), {
+            type: 'bar',
+            data: {
+                labels: sourceLabels,
+                datasets: [{
+                    label: 'ユーザー数',
+                    data: sourceUsers,
+                    backgroundColor: '#3b82f6'
+                }]
+            }
+        });
+        new Chart(document.getElementById('sourcePieChart'), {
+            type: 'pie',
+            data: {
+                labels: sourceLabels,
+                datasets: [{
+                    data: sourceUsers,
+                    backgroundColor: ['#3b82f6', '#f59e42', '#10b981', '#6366f1', '#eab308', '#ef4444']
+                }]
+            }
+        });
+
+        // ページデータ
+        const pageData = @json($data['dimensions']['pages']);
+        const pageLabels = pageData.map(d => d.pagePath);
+        const pageViews = pageData.map(d => d.pageviews);
+        new Chart(document.getElementById('pageBarChart'), {
+            type: 'bar',
+            data: {
+                labels: pageLabels,
+                datasets: [{
+                    label: 'ページビュー',
+                    data: pageViews,
+                    backgroundColor: '#6366f1'
+                }]
+            }
+        });
+
+        // 地域データ
+        const locationData = @json($data['dimensions']['locations']);
+        const cityLabels = [...new Set(locationData.map(d => d.city))];
+        const cityUsers = cityLabels.map(label => locationData.filter(d => d.city === label).reduce((sum, d) =>
+            sum + d.users, 0));
+        new Chart(document.getElementById('locationRadarChart'), {
+            type: 'radar',
+            data: {
+                labels: cityLabels,
+                datasets: [{
+                    label: 'ユーザー数',
+                    data: cityUsers,
+                    backgroundColor: 'rgba(59,130,246,0.2)',
+                    borderColor: '#3b82f6'
+                }]
+            }
+        });
+
+        // コンバージョン詳細分析
+        const conversionData = @json($data['dimensions']['keyevents'] ?? []);
+        if (conversionData.length > 0) {
+            // トラフィックソース別
+            const sourceMap = {};
+            conversionData.forEach(d => {
+                const key = (d.source ?? '-') + ' / ' + (d.medium ?? '-');
+                sourceMap[key] = (sourceMap[key] ?? 0) + (d.keyEvents ?? 0);
             });
-        </script>
-    @endpush
+            new Chart(document.getElementById('conversionSourceBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(sourceMap),
+                    datasets: [{
+                        label: 'コンバージョン数',
+                        data: Object.values(sourceMap),
+                        backgroundColor: '#f59e42'
+                    }]
+                }
+            });
+
+            // ページ別
+            const pageMap = {};
+            conversionData.forEach(d => {
+                const key = d.pagePath ?? '-';
+                pageMap[key] = (pageMap[key] ?? 0) + (d.keyEvents ?? 0);
+            });
+            new Chart(document.getElementById('conversionPageBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(pageMap),
+                    datasets: [{
+                        label: 'コンバージョン数',
+                        data: Object.values(pageMap),
+                        backgroundColor: '#10b981'
+                    }]
+                }
+            });
+
+            // デバイス別
+            const deviceMap = {};
+            conversionData.forEach(d => {
+                const key = d.deviceCategory ?? '-';
+                deviceMap[key] = (deviceMap[key] ?? 0) + (d.keyEvents ?? 0);
+            });
+            new Chart(document.getElementById('conversionDevicePieChart'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(deviceMap),
+                    datasets: [{
+                        data: Object.values(deviceMap),
+                        backgroundColor: ['#3b82f6', '#f59e42', '#10b981']
+                    }]
+                }
+            });
+
+            // 地域別
+            const cityMap = {};
+            conversionData.forEach(d => {
+                const key = d.city ?? '-';
+                cityMap[key] = (cityMap[key] ?? 0) + (d.keyEvents ?? 0);
+            });
+            new Chart(document.getElementById('conversionLocationBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(cityMap),
+                    datasets: [{
+                        label: 'コンバージョン数',
+                        data: Object.values(cityMap),
+                        backgroundColor: '#6366f1'
+                    }]
+                }
+            });
+
+            // 曜日別
+            const en2ja = {
+                'Sunday': '日曜日',
+                'Monday': '月曜日',
+                'Tuesday': '火曜日',
+                'Wednesday': '水曜日',
+                'Thursday': '木曜日',
+                'Friday': '金曜日',
+                'Saturday': '土曜日'
+            };
+            const weekOrder = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+            const dayMap = {};
+            conversionData.forEach(d => {
+                const enDay = d.dayOfWeekName ?? '-';
+                const jaDay = en2ja[enDay] ?? enDay;
+                dayMap[jaDay] = (dayMap[jaDay] ?? 0) + (d.keyEvents ?? 0);
+            });
+            // すべての曜日を0埋めで用意
+            const sortedDays = weekOrder;
+            const sortedCounts = weekOrder.map(day => dayMap[day] ?? 0);
+
+            new Chart(document.getElementById('conversionDayBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedDays,
+                    datasets: [{
+                        label: 'コンバージョン数',
+                        data: sortedCounts,
+                        backgroundColor: '#eab308'
+                    }]
+                }
+            });
+        }
+    </script>
 </x-app-layout>

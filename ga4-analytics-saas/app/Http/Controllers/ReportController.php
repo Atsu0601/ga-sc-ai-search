@@ -218,7 +218,13 @@ class ReportController extends Controller
         // AIレコメンデーションを取得
         $recommendations = $report->recommendations()->orderBy('severity', 'desc')->get();
 
-        return view('reports.show', compact('report', 'components', 'recommendations'));
+        // GoogleAnalyticsServiceのデータを取得（保存済みのみ利用、再取得はしない）
+        $data = null;
+        if (isset($report->data_json['analytics']) && is_array($report->data_json['analytics'])) {
+            $data = $report->data_json['analytics'];
+        }
+
+        return view('reports.show', compact('report', 'components', 'recommendations', 'data'));
     }
 
     /**

@@ -402,11 +402,16 @@ class GoogleAnalyticsService
             'dimensions' => [
                 new Dimension(['name' => 'date']),
                 new Dimension(['name' => 'eventName']),
+                new Dimension(['name' => 'source']),
+                new Dimension(['name' => 'medium']),
+                new Dimension(['name' => 'pagePath']),
+                new Dimension(['name' => 'deviceCategory']),
+                new Dimension(['name' => 'city']),
+                new Dimension(['name' => 'dayOfWeekName']),
             ],
             'metrics' => [
                 new Metric(['name' => 'keyEvents']),
                 new Metric(['name' => 'eventValue']),
-                new Metric(['name' => 'eventCount']),
                 new Metric(['name' => 'totalUsers']),
                 new Metric(['name' => 'sessions']),
             ],
@@ -421,11 +426,16 @@ class GoogleAnalyticsService
             return [
                 'date' => $row->getDimensionValues()[0]->getValue(),
                 'eventName' => $row->getDimensionValues()[1]->getValue(),
+                'source' => $row->getDimensionValues()[2]->getValue(),
+                'medium' => $row->getDimensionValues()[3]->getValue(),
+                'pagePath' => $row->getDimensionValues()[4]->getValue(),
+                'deviceCategory' => $row->getDimensionValues()[5]->getValue(),
+                'city' => $row->getDimensionValues()[6]->getValue(),
+                'dayOfWeekName' => $row->getDimensionValues()[7]->getValue(),
                 'keyEvents' => (int)$row->getMetricValues()[0]->getValue(),
                 'eventValue' => (float)$row->getMetricValues()[1]->getValue(),
-                'eventCount' => (int)$row->getMetricValues()[2]->getValue(),
-                'users' => (int)$row->getMetricValues()[3]->getValue(),
-                'sessions' => (int)$row->getMetricValues()[4]->getValue(),
+                'users' => (int)$row->getMetricValues()[2]->getValue(),
+                'sessions' => (int)$row->getMetricValues()[3]->getValue(),
             ];
         }, iterator_to_array($rows));
     }
