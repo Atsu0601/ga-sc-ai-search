@@ -212,56 +212,70 @@
                     <!-- デバイスデータの詳細テーブル -->
                     <div class="bg-white rounded shadow p-4 col-span-1 lg:col-span-2">
                         <h3 class="text-lg font-bold mb-3 border-b pb-2">デバイス詳細</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">カテゴリ</th>
-                                        <th class="px-4 py-2 text-left">OS</th>
-                                        <th class="px-4 py-2 text-left">ブラウザ</th>
-                                        <th class="px-4 py-2 text-right">ユーザー数</th>
-                                        <th class="px-4 py-2 text-right">セッション</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    @foreach ($data['dimensions']['devices'] as $row)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-2">{{ $row['deviceCategory'] }}</td>
-                                            <td class="px-4 py-2">{{ $row['operatingSystem'] }}</td>
-                                            <td class="px-4 py-2">{{ $row['browser'] }}</td>
-                                            <td class="px-4 py-2 text-right">{{ $row['users'] }}</td>
-                                            <td class="px-4 py-2 text-right">{{ $row['sessions'] }}</td>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="mb-4 flex justify-center">
+                                <div class="w-full">
+                                    <canvas id="deviceDetailPieChart" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left">カテゴリ</th>
+                                            <th class="px-4 py-2 text-left">OS</th>
+                                            <th class="px-4 py-2 text-left">ブラウザ</th>
+                                            <th class="px-4 py-2 text-right">ユーザー数</th>
+                                            <th class="px-4 py-2 text-right">セッション</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        @foreach ($data['dimensions']['devices'] as $row)
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-2">{{ $row['deviceCategory'] }}</td>
+                                                <td class="px-4 py-2">{{ $row['operatingSystem'] }}</td>
+                                                <td class="px-4 py-2">{{ $row['browser'] }}</td>
+                                                <td class="px-4 py-2 text-right">{{ $row['users'] }}</td>
+                                                <td class="px-4 py-2 text-right">{{ $row['sessions'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
                     <!-- トラフィックソース詳細テーブル -->
                     <div class="bg-white rounded shadow p-4 col-span-1 lg:col-span-2">
                         <h3 class="text-lg font-bold mb-3 border-b pb-2">トラフィックソース詳細</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">ソース</th>
-                                        <th class="px-4 py-2 text-left">メディア</th>
-                                        <th class="px-4 py-2 text-right">ユーザー数</th>
-                                        <th class="px-4 py-2 text-right">セッション</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200">
-                                    @foreach ($data['dimensions']['sources'] as $row)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-4 py-2">{{ $row['source'] }}</td>
-                                            <td class="px-4 py-2">{{ $row['medium'] }}</td>
-                                            <td class="px-4 py-2 text-right">{{ $row['users'] }}</td>
-                                            <td class="px-4 py-2 text-right">{{ $row['sessions'] }}</td>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="mb-4 flex justify-center">
+                                <div class="w-full">
+                                    <canvas id="sourceDetailPieChart" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left">ソース</th>
+                                            <th class="px-4 py-2 text-left">メディア</th>
+                                            <th class="px-4 py-2 text-right">ユーザー数</th>
+                                            <th class="px-4 py-2 text-right">セッション</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200">
+                                        @foreach ($data['dimensions']['sources'] as $row)
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-4 py-2">{{ $row['source'] }}</td>
+                                                <td class="px-4 py-2">{{ $row['medium'] }}</td>
+                                                <td class="px-4 py-2 text-right">{{ $row['users'] }}</td>
+                                                <td class="px-4 py-2 text-right">{{ $row['sessions'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -301,9 +315,12 @@
                     <div class="bg-white rounded shadow p-4 col-span-1 lg:col-span-2">
                         <h3 class="text-lg font-bold mb-3 border-b pb-2">地域データ</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <canvas id="locationRadarChart" height="250"></canvas>
+                            <div class="mb-4 flex justify-center">
+                                <div class="w-full">
+                                    <canvas id="locationPieChart" height="200"></canvas>
+                                </div>
                             </div>
+
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-gray-50">
@@ -828,24 +845,32 @@
             }
         });
 
-        // 地域データ
+        // 地域データ（円グラフ）
         const locationData = @json($data['dimensions']['locations']);
-        const countryLabels = [...new Set(locationData.map(d => d.country))];
-        const countryUsers = countryLabels.map(label => locationData.filter(d => d.country === label).reduce((sum, d) =>
-            sum + d.users, 0));
-
-        new Chart(document.getElementById('locationRadarChart'), {
-            type: 'radar',
+        const regionLabels = [...new Set(locationData.map(d => d.region))];
+        const regionUsers = regionLabels.map(label =>
+            locationData.filter(d => d.region === label).reduce((sum, d) => sum + d.users, 0)
+        );
+        new Chart(document.getElementById('locationPieChart'), {
+            type: 'pie',
             data: {
-                labels: countryLabels,
+                labels: regionLabels,
                 datasets: [{
-                    label: 'ユーザー数',
-                    data: countryUsers,
-                    backgroundColor: 'rgba(59,130,246,0.2)',
-                    borderColor: '#3b82f6'
+                    data: regionUsers,
+                    backgroundColor: [
+                        '#3b82f6', '#f59e42', '#10b981', '#6366f1', '#eab308', '#ef4444',
+                        '#a3e635', '#f472b6', '#f87171', '#facc15', '#818cf8', '#fbbf24'
+                    ]
                 }]
             },
-            options: commonChartOptions
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
         });
 
         // コンバージョンデータ
@@ -1103,5 +1128,53 @@
                 },
             });
         }
+
+        // デバイス詳細円グラフ
+        const deviceDetailData = @json($data['dimensions']['devices']);
+        const deviceDetailLabels = [...new Set(deviceDetailData.map(d => d.deviceCategory))];
+        const deviceDetailCounts = deviceDetailLabels.map(label =>
+            deviceDetailData.filter(d => d.deviceCategory === label).reduce((sum, d) => sum + d.users, 0)
+        );
+        new Chart(document.getElementById('deviceDetailPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: deviceDetailLabels,
+                datasets: [{
+                    data: deviceDetailCounts,
+                    backgroundColor: ['#3b82f6', '#f59e42', '#10b981', '#6366f1', '#eab308', '#ef4444']
+                }]
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // トラフィックソース詳細円グラフ
+        const sourceDetailData = @json($data['dimensions']['sources']);
+        const sourceDetailLabels = sourceDetailData.map(d => d.source + ' / ' + d.medium);
+        const sourceDetailCounts = sourceDetailData.map(d => d.users);
+        new Chart(document.getElementById('sourceDetailPieChart'), {
+            type: 'pie',
+            data: {
+                labels: sourceDetailLabels,
+                datasets: [{
+                    data: sourceDetailCounts,
+                    backgroundColor: ['#3b82f6', '#f59e42', '#10b981', '#6366f1', '#eab308', '#ef4444']
+                }]
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
     </script>
 </x-app-layout>
