@@ -20,7 +20,7 @@ class FetchAnalyticsDataJob implements ShouldQueue
 
     public function handle()
     {
-        Artisan::call('analytics:fetch-data');
+        Artisan::call('analytics:fetch');
     }
 
     public function failed(\Throwable $exception)

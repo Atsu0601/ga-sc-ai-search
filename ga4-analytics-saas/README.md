@@ -79,7 +79,7 @@ cd ga4-analytics-saas
 ./vendor/bin/sail artisan schedule:test
 
 # 手動でのデータ取得実行（テスト用）
-./vendor/bin/sail artisan analytics:fetch-data
+./vendor/bin/sail artisan analytics:fetch
 ```
 
 ### 4. ログの確認
@@ -118,13 +118,13 @@ cd ga4-analytics-saas
 1. スケジュール実行時間の変更：
 ```php
 // app/Console/Kernel.php
-$schedule->command('analytics:fetch-data')
+$schedule->command('analytics:fetch')
     ->dailyAt('03:00') // 時間を変更
 ```
 
 2. 即時実行（デバッグ用）：
 ```bash
-./vendor/bin/sail artisan analytics:fetch-data
+./vendor/bin/sail artisan analytics:fetch
 ```
 
 3. スケジュール一覧の確認：
@@ -155,7 +155,7 @@ crontab -e
 
 #### 実行スケジュール
 
-- 実行コマンド: `analytics:fetch-data`
+- 実行コマンド: `analytics:fetch`
 - 実行時間: 毎日午前1時
 - ログファイル: `/ga4-analytics-saas/storage/logs/analytics-fetch.log`
 
