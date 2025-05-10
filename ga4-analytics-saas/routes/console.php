@@ -68,7 +68,7 @@ Schedule::command('snapshots:cleanup')->weekly()
     ->appendOutputTo(storage_path('logs/snapshots-cleanup.log'));
 
 // キューワーカーの監視
-Schedule::command('queue:monitor')
+Schedule::command('queue:monitor default')
     ->everyFiveMinutes()
     ->name('monitor_queue_workers')
     ->withoutOverlapping()

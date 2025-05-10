@@ -72,6 +72,15 @@ return [
             'after_commit' => false,
         ],
 
+        // 追加
+        'default' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'default',
+            'retry_after' => 90,
+            'after_commit' => false,
+        ],
+
     ],
 
     /*
