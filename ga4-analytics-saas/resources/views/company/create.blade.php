@@ -13,59 +13,95 @@
                         @csrf
 
                         <div class="mb-4">
-                            <x-input-label for="name" :value="__('会社名')" />
-                            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus />
+                            <label for="name" class="block text-sm font-medium text-gray-700">
+                                会社名 <span
+                                    class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                            </label>
+                            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name"
+                                :value="old('name')" required autofocus />
                             <x-input-error :messages="$errors->get('name')" class="mt-2" />
                         </div>
 
                         <div class="mb-4">
-                            <x-input-label for="billing_email" :value="__('請求先メールアドレス')" />
-                            <x-text-input id="billing_email" class="block mt-1 w-full" type="email" name="billing_email" :value="old('billing_email')" />
+                            <label for="billing_email" class="block text-sm font-medium text-gray-700">
+                                請求先メールアドレス <span
+                                    class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                            </label>
+                            <x-text-input id="billing_email" class="block mt-1 w-full" type="email"
+                                name="billing_email" :value="old('billing_email')" required />
                             <x-input-error :messages="$errors->get('billing_email')" class="mt-2" />
                         </div>
 
                         <div class="mb-4">
-                            <x-input-label for="contact_person" :value="__('担当者名')" />
-                            <x-text-input id="contact_person" class="block mt-1 w-full" type="text" name="contact_person" :value="old('contact_person')" />
+                            <label for="contact_person" class="block text-sm font-medium text-gray-700">
+                                担当者名 <span
+                                    class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                            </label>
+                            <x-text-input id="contact_person" class="block mt-1 w-full" type="text"
+                                name="contact_person" :value="old('contact_person')" required />
                             <x-input-error :messages="$errors->get('contact_person')" class="mt-2" />
                         </div>
 
                         <div class="mb-4">
-                            <x-input-label for="phone" :value="__('電話番号')" />
-                            <x-text-input id="phone" class="block mt-1 w-full" type="text" name="phone" :value="old('phone')" />
+                            <label for="phone" class="block text-sm font-medium text-gray-700">
+                                電話番号 <span
+                                    class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                            </label>
+                            <x-text-input id="phone" class="block mt-1 w-full" type="text" name="phone"
+                                :value="old('phone')" required />
                             <x-input-error :messages="$errors->get('phone')" class="mt-2" />
                         </div>
 
                         <div class="mb-4">
-                            <x-input-label for="address" :value="__('住所')" />
-                            <x-text-input id="address" class="block mt-1 w-full" type="text" name="address" :value="old('address')" />
+                            <label for="address" class="block text-sm font-medium text-gray-700">
+                                住所 <span
+                                    class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                            </label>
+                            <x-text-input id="address" class="block mt-1 w-full" type="text" name="address"
+                                :value="old('address')" required />
                             <x-input-error :messages="$errors->get('address')" class="mt-2" />
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
-                                <x-input-label for="city" :value="__('市区町村')" />
-                                <x-text-input id="city" class="block mt-1 w-full" type="text" name="city" :value="old('city')" />
+                                <label for="city" class="block text-sm font-medium text-gray-700">
+                                    市区町村 <span
+                                        class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                                </label>
+                                <x-text-input id="city" class="block mt-1 w-full" type="text" name="city"
+                                    :value="old('city')" required />
                                 <x-input-error :messages="$errors->get('city')" class="mt-2" />
                             </div>
 
                             <div class="mb-4">
-                                <x-input-label for="state" :value="__('都道府県')" />
-                                <x-text-input id="state" class="block mt-1 w-full" type="text" name="state" :value="old('state')" />
+                                <label for="state" class="block text-sm font-medium text-gray-700">
+                                    都道府県 <span
+                                        class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                                </label>
+                                <x-text-input id="state" class="block mt-1 w-full" type="text" name="state"
+                                    :value="old('state')" required />
                                 <x-input-error :messages="$errors->get('state')" class="mt-2" />
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="mb-4">
-                                <x-input-label for="zip_code" :value="__('郵便番号')" />
-                                <x-text-input id="zip_code" class="block mt-1 w-full" type="text" name="zip_code" :value="old('zip_code')" />
-                                <x-input-error :messages="$errors->get('zip_code')" class="mt-2" />
+                                <label for="postal_code" class="block text-sm font-medium text-gray-700">
+                                    郵便番号 <span
+                                        class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                                </label>
+                                <x-text-input id="postal_code" class="block mt-1 w-full" type="text"
+                                    name="postal_code" :value="old('postal_code')" required />
+                                <x-input-error :messages="$errors->get('postal_code')" class="mt-2" />
                             </div>
 
                             <div class="mb-4">
-                                <x-input-label for="country" :value="__('国')" />
-                                <x-text-input id="country" class="block mt-1 w-full" type="text" name="country" :value="old('country')" value="日本" />
+                                <label for="country" class="block text-sm font-medium text-gray-700">
+                                    国 <span
+                                        class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold ml-2">必須</span>
+                                </label>
+                                <x-text-input id="country" class="block mt-1 w-full" type="text" name="country"
+                                    :value="old('country')" value="日本" required />
                                 <x-input-error :messages="$errors->get('country')" class="mt-2" />
                             </div>
                         </div>
@@ -80,4 +116,56 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.querySelector('form');
+                const requiredFields = form.querySelectorAll('[required]');
+
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    let hasError = false;
+
+                    requiredFields.forEach(field => {
+                        if (!field.value.trim()) {
+                            hasError = true;
+                            field.classList.add('border-red-500');
+
+                            // エラーメッセージを表示
+                            const errorElement = field.nextElementSibling;
+                            if (errorElement && errorElement.classList.contains('input-error')) {
+                                errorElement.textContent = 'この項目は必須です';
+                            }
+                        } else {
+                            field.classList.remove('border-red-500');
+                            const errorElement = field.nextElementSibling;
+                            if (errorElement && errorElement.classList.contains('input-error')) {
+                                errorElement.textContent = '';
+                            }
+                        }
+                    });
+
+                    if (!hasError) {
+                        form.submit();
+                    } else {
+                        alert('必須項目を入力してください。');
+                    }
+                });
+
+                // 入力時にエラー表示をクリア
+                requiredFields.forEach(field => {
+                    field.addEventListener('input', function() {
+                        if (this.value.trim()) {
+                            this.classList.remove('border-red-500');
+                            const errorElement = this.nextElementSibling;
+                            if (errorElement && errorElement.classList.contains('input-error')) {
+                                errorElement.textContent = '';
+                            }
+                        }
+                    });
+                });
+            });
+        </script>
+    @endpush
 </x-app-layout>

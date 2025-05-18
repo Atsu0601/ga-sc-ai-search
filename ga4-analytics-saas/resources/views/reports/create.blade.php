@@ -19,7 +19,8 @@
                         <!-- レポートタイプ選択 -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                レポートタイプを選択
+                                レポートタイプを選択 <span
+                                    class="text-red-500 bg-red-500 text-white px-2 py-1 rounded-md text-xs font-bold">必須</span>
                             </label>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 @foreach ([
@@ -38,7 +39,7 @@
     ] as $type => $data)
                                     <div class="relative">
                                         <input type="radio" name="report_type" id="{{ $type }}"
-                                            value="{{ $type }}" class="hidden peer" required>
+                                            value="{{ $type }}" class="absolute opacity-0 peer">
                                         <label for="{{ $type }}"
                                             class="block p-4 border rounded-lg cursor-pointer
                                                       transition-all duration-200 ease-in-out
@@ -57,6 +58,7 @@
                                     </div>
                                 @endforeach
                             </div>
+                            <p class="mt-2 text-sm text-red-600 hidden" id="reportTypeError">レポートタイプを選択してください。</p>
                         </div>
 
                         <!-- 分析期間選択 -->
@@ -103,15 +105,32 @@
 
             // フォームのsubmitイベントを監視
             const form = document.getElementById('reportForm');
+            const reportTypeError = document.getElementById('reportTypeError');
+            const reportTypeInputs = document.querySelectorAll('input[name="report_type"]');
+
+            // レポートタイプの選択状態を監視
+            reportTypeInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    if (this.checked) {
+                        reportTypeError.classList.add('hidden');
+                    }
+                });
+            });
+
+            // フォーム送信時のバリデーション
             form.addEventListener('submit', function(e) {
                 e.preventDefault(); // 一旦デフォルトの送信を防ぐ
 
                 // バリデーション
-                const reportType = document.querySelector('input[name="report_type"]:checked');
+                const selectedType = document.querySelector('input[name="report_type"]:checked');
                 const dateRange = document.getElementById('date_range').value;
 
-                if (!reportType) {
-                    alert('レポートタイプを選択してください。');
+                if (!selectedType) {
+                    reportTypeError.classList.remove('hidden');
+                    reportTypeError.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
                     return;
                 }
 
@@ -122,7 +141,7 @@
 
                 // バリデーションが通ったらフォームを送信
                 console.log('フォーム送信:', {
-                    reportType: reportType.value,
+                    reportType: selectedType.value,
                     dateRange: dateRange,
                     websiteId: {{ $website->id }}
                 });
