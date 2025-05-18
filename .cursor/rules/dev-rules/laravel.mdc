@@ -3,90 +3,320 @@ description: Rules for Laravel project with specific directory structure and fun
 globs: 
 alwaysApply: true
 ---
+# Laravel 12 プロジェクト構造
 
-# ディレクトリ構造
+## プロジェクトの基本構造
 
 ```
-ga4-analytics-saasがプロジェクトディレクトリです。
-
 ga4-analytics-saas/
-├── app/
-│   ├── Http/
-│   │   └── Controllers/
-│   │       ├── ProfileController.php
-│   │       ├── CompanyController.php
-│   │       ├── GoogleApiController.php
-│   │       ├── WebsiteController.php
-│   │       ├── ReportController.php
-│   │       ├── SubscriptionController.php
-│   │       ├── DataSnapshotController.php
-│   │       ├── StripeWebhookController.php
-│   │       ├── HeatmapController.php
-│   │       └── Admin/
-│   │           ├── UserController.php
-│   │           ├── SubscriptionController.php
-│   │           └── SettingController.php
-│   └── Models/
-│       ├── User.php
-│       ├── Company.php
-│       ├── Website.php
-│       ├── Report.php
-│       ├── DataSnapshot.php
-│       ├── Heatmap.php
-│       └── Subscription.php
-├── resources/
-│   └── views/
-│       ├── welcome.blade.php
+├── app/                    # アプリケーションのコアコード
+│   ├── Console/           # カスタムArtisanコマンド
+│   │   └── Commands/      # コマンドクラス
+│   │       ├── AnalyticsFetchCommand.php
+│   │       └── FetchAnalyticsData.php
+│   ├── Http/              # HTTP関連のコード
+│   │   ├── Controllers/   # コントローラー
+│   │   │   ├── Admin/
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   ├── UserController.php
+│   │   │   │   └── WebsiteController.php
+│   │   │   ├── AnalyticsController.php
+│   │   │   ├── Auth/
+│   │   │   │   ├── AuthenticatedSessionController.php
+│   │   │   │   ├── ConfirmablePasswordController.php
+│   │   │   │   ├── EmailVerificationNotificationController.php
+│   │   │   │   ├── EmailVerificationPromptController.php
+│   │   │   │   ├── NewPasswordController.php
+│   │   │   │   ├── PasswordController.php
+│   │   │   │   ├── PasswordResetLinkController.php
+│   │   │   │   ├── RegisteredUserController.php
+│   │   │   │   └── VerifyEmailController.php
+│   │   │   ├── CompanyController.php
+│   │   │   ├── DashboardController.php
+│   │   │   ├── GoogleApiController.php
+│   │   │   ├── ProfileController.php
+│   │   │   ├── ReportController.php
+│   │   │   ├── SnapshotController.php
+│   │   │   ├── SubscriptionController.php
+│   │   │   └── WebsiteController.php
+│   │   ├── Middleware/    # ミドルウェア
+│   │   │   ├── Authenticate.php
+│   │   │   ├── EncryptCookies.php
+│   │   │   ├── HandleInertiaRequests.php
+│   │   │   ├── PreventRequestsDuringMaintenance.php
+│   │   │   ├── RedirectIfAuthenticated.php
+│   │   │   ├── TrimStrings.php
+│   │   │   ├── TrustHosts.php
+│   │   │   ├── TrustProxies.php
+│   │   │   ├── ValidateSignature.php
+│   │   │   └── VerifyCsrfToken.php
+│   │   └── Requests/      # フォームリクエスト
+│   │       ├── ProfileUpdateRequest.php
+│   │       └── WebsiteRequest.php
+│   ├── Jobs/              # ジョブクラス
+│   │   └── FetchAnalyticsDataJob.php
+│   ├── Models/            # Eloquentモデル
+│   │   ├── Company.php
+│   │   ├── DataSnapshot.php
+│   │   ├── Report.php
+│   │   ├── Subscription.php
+│   │   ├── User.php
+│   │   └── Website.php
+│   ├── Notifications/     # 通知クラス
+│   │   └── AnalyticsDataFetched.php
+│   ├── Policies/         # ポリシークラス
+│   │   ├── CompanyPolicy.php
+│   │   ├── DataSnapshotPolicy.php
+│   │   ├── ReportPolicy.php
+│   │   ├── SubscriptionPolicy.php
+│   │   ├── UserPolicy.php
+│   │   └── WebsitePolicy.php
+│   ├── Services/         # ビジネスロジックサービス
+│   │   ├── AnalyticsService.php
+│   │   ├── DataSnapshotService.php
+│   │   ├── GoogleAnalyticsService.php
+│   │   ├── ReportService.php
+│   │   └── WebsiteService.php
+│   ├── View/             # ビューコンポーザー
+│   │   └── Composers/
+│   │       └── DashboardComposer.php
+│   └── Providers/        # サービスプロバイダー
+│       ├── AppServiceProvider.php
+│       ├── AuthServiceProvider.php
+│       ├── BroadcastServiceProvider.php
+│       ├── EventServiceProvider.php
+│       └── RouteServiceProvider.php
+├── resources/            # フロントエンドリソース
+│   ├── css/             # CSSファイル
+│   │   └── app.css
+│   ├── js/              # JavaScriptファイル
+│   │   ├── app.js
+│   │   ├── bootstrap.js
+│   │   └── pages/
+│   │       ├── Admin/
+│   │       │   ├── Dashboard.jsx
+│   │       │   ├── Users/
+│   │       │   │   ├── Create.jsx
+│   │       │   │   ├── Edit.jsx
+│   │       │   │   └── Index.jsx
+│   │       │   └── Websites/
+│   │       │       ├── Create.jsx
+│   │       │       ├── Edit.jsx
+│   │       │       └── Index.jsx
+│   │       ├── Auth/
+│   │       │   ├── Login.jsx
+│   │       │   ├── Register.jsx
+│   │       │   └── VerifyEmail.jsx
+│   │       ├── Companies/
+│   │       │   ├── Create.jsx
+│   │       │   ├── Edit.jsx
+│   │       │   └── Index.jsx
+│   │       ├── Dashboard.jsx
+│   │       ├── Profile/
+│   │       │   ├── Edit.jsx
+│   │       │   └── Partials/
+│   │       │       ├── DeleteUserForm.jsx
+│   │       │       └── UpdatePasswordForm.jsx
+│   │       ├── Reports/
+│   │       │   ├── Create.jsx
+│   │       │   ├── Edit.jsx
+│   │       │   └── Index.jsx
+│   │       ├── Snapshots/
+│   │       │   ├── Create.jsx
+│   │       │   ├── Edit.jsx
+│   │       │   └── Index.jsx
+│   │       ├── Subscriptions/
+│   │       │   ├── Create.jsx
+│   │       │   ├── Edit.jsx
+│   │       │   └── Index.jsx
+│   │       └── Websites/
+│   │           ├── Create.jsx
+│   │           ├── Edit.jsx
+│   │           └── Index.jsx
+│   └── views/           # Bladeテンプレート
+│       ├── admin/       # 管理者用ビュー
+│       │   ├── dashboard.blade.php
+│       │   ├── users/
+│       │   │   ├── create.blade.php
+│       │   │   ├── edit.blade.php
+│       │   │   └── index.blade.php
+│       │   └── websites/
+│       │       ├── create.blade.php
+│       │       ├── edit.blade.php
+│       │       └── index.blade.php
+│       ├── auth/        # 認証関連ビュー
+│       │   ├── confirm-password.blade.php
+│       │   ├── forgot-password.blade.php
+│       │   ├── login.blade.php
+│       │   ├── register.blade.php
+│       │   ├── reset-password.blade.php
+│       │   └── verify-email.blade.php
+│       ├── company/     # 企業関連ビュー
+│       │   ├── create.blade.php
+│       │   ├── edit.blade.php
+│       │   └── index.blade.php
+│       ├── components/  # 共通コンポーネント
+│       │   ├── application-logo.blade.php
+│       │   ├── application-mark.blade.php
+│       │   ├── button.blade.php
+│       │   ├── dropdown.blade.php
+│       │   ├── input.blade.php
+│       │   ├── label.blade.php
+│       │   └── modal.blade.php
 │       ├── dashboard.blade.php
-│       ├── profile/
-│       │   └── edit.blade.php
-│       ├── websites/
-│       │   ├── index.blade.php
-│       │   ├── show.blade.php
+│       ├── layouts/     # レイアウトテンプレート
+│       │   ├── app.blade.php
+│       │   └── guest.blade.php
+│       ├── profile/     # プロフィール関連ビュー
+│       │   ├── edit.blade.php
+│       │   └── partials/
+│       │       ├── delete-user-form.blade.php
+│       │       └── update-password-form.blade.php
+│       ├── reports/     # レポート関連ビュー
 │       │   ├── create.blade.php
-│       │   └── edit.blade.php
-│       ├── reports/
-│       │   ├── index.blade.php
-│       │   ├── show.blade.php
-│       │   └── create.blade.php
-│       ├── snapshots/
-│       │   ├── index.blade.php
-│       │   └── show.blade.php
-│       ├── heatmaps/
-│       │   ├── index.blade.php
-│       │   ├── show.blade.php
+│       │   ├── edit.blade.php
+│       │   └── index.blade.php
+│       ├── snapshots/   # スナップショット関連ビュー
 │       │   ├── create.blade.php
-│       │   └── edit.blade.php
-│       └── admin/
-│           ├── dashboard.blade.php
-│           ├── users/
-│           │   ├── index.blade.php
-│           │   ├── show.blade.php
-│           │   ├── create.blade.php
-│           │   └── edit.blade.php
-│           ├── subscriptions/
-│           │   ├── index.blade.php
-│           │   ├── plans/
-│           │   │   ├── index.blade.php
-│           │   │   ├── create.blade.php
-│           │   │   └── edit.blade.php
-│           │   └── payments.blade.php
-│           └── settings/
-│               └── index.blade.php
-└── routes/
-    ├── web.php
-    └── auth.php
+│       │   ├── edit.blade.php
+│       │   └── index.blade.php
+│       ├── subscriptions/ # サブスクリプション関連ビュー
+│       │   ├── create.blade.php
+│       │   ├── edit.blade.php
+│       │   └── index.blade.php
+│       ├── websites/    # ウェブサイト関連ビュー
+│       │   ├── create.blade.php
+│       │   ├── edit.blade.php
+│       │   └── index.blade.php
+│       └── welcome.blade.php
+├── routes/              # ルート定義
+│   ├── api.php         # APIルート
+│   ├── channels.php    # ブロードキャストチャンネル
+│   ├── console.php     # コンソールコマンド
+│   └── web.php         # Webルート
+├── storage/            # アプリケーションストレージ
+│   ├── app/           # アプリケーション固有のファイル
+│   ├── framework/     # フレームワークのファイル
+│   └── logs/          # ログファイル
+├── tests/             # テストファイル
+│   ├── Feature/       # 機能テスト
+│   │   ├── Auth/
+│   │   │   ├── AuthenticationTest.php
+│   │   │   ├── EmailVerificationTest.php
+│   │   │   └── PasswordConfirmationTest.php
+│   │   ├── ProfileTest.php
+│   │   └── WebsiteTest.php
+│   └── Unit/          # ユニットテスト
+│       ├── AnalyticsServiceTest.php
+│       ├── DataSnapshotServiceTest.php
+│       └── WebsiteServiceTest.php
+├── vendor/            # Composer依存関係
+├── .editorconfig     # エディタ設定
+├── .gitattributes    # Git属性設定
+├── .gitignore        # Git除外設定
+├── artisan           # Laravel CLI
+├── composer.json     # Composer設定
+├── composer.lock     # Composerロックファイル
+├── docker-compose.yml # Docker Compose設定
+├── package.json      # NPM設定
+├── phpunit.xml       # PHPUnit設定
+├── postcss.config.js # PostCSS設定
+├── tailwind.config.js # Tailwind CSS設定
+└── vite.config.js    # Vite設定
 ```
 
-## 主要機能
+## 主要なディレクトリの説明
 
-1. ユーザー認証・プロフィール管理
-2. 会社情報管理
-3. ウェブサイト管理
-4. Google Analytics連携
-5. Search Console連携
-6. レポート管理
-7. データスナップショット管理
-8. ヒートマップ管理
-9. サブスクリプション管理
-10. 管理者機能
+### app/
+アプリケーションのコアコードが格納されるディレクトリです。
+
+- **Console/**: Artisanコマンドの実装
+  - `AnalyticsFetchCommand.php`: Analyticsデータ取得コマンド
+  - `FetchAnalyticsData.php`: Analyticsデータ取得ジョブ
+
+- **Http/**: HTTP関連のコード
+  - **Controllers/**: コントローラー
+    - **Admin/**: 管理者用コントローラー
+    - **Auth/**: 認証関連コントローラー
+    - `AnalyticsController.php`: Analytics関連の処理
+    - `CompanyController.php`: 企業管理
+    - `DashboardController.php`: ダッシュボード
+    - `GoogleApiController.php`: Google API連携
+    - `ProfileController.php`: プロフィール管理
+    - `ReportController.php`: レポート管理
+    - `SnapshotController.php`: スナップショット管理
+    - `SubscriptionController.php`: サブスクリプション管理
+    - `WebsiteController.php`: ウェブサイト管理
+
+- **Jobs/**: ジョブクラス
+  - `FetchAnalyticsDataJob.php`: Analyticsデータ取得ジョブ
+
+- **Models/**: Eloquentモデル
+  - `Company.php`: 企業モデル
+  - `DataSnapshot.php`: データスナップショットモデル
+  - `Report.php`: レポートモデル
+  - `Subscription.php`: サブスクリプションモデル
+  - `User.php`: ユーザーモデル
+  - `Website.php`: ウェブサイトモデル
+
+- **Services/**: ビジネスロジックサービス
+  - `AnalyticsService.php`: Analytics関連の処理
+  - `DataSnapshotService.php`: スナップショット管理
+  - `GoogleAnalyticsService.php`: Google Analytics連携
+  - `ReportService.php`: レポート生成
+  - `WebsiteService.php`: ウェブサイト管理
+
+### resources/
+フロントエンド関連のリソースが格納されるディレクトリです。
+
+- **js/**: JavaScriptファイル
+  - **pages/**: Reactコンポーネント
+    - **Admin/**: 管理者用ページ
+    - **Auth/**: 認証関連ページ
+    - **Companies/**: 企業管理ページ
+    - **Profile/**: プロフィール管理ページ
+    - **Reports/**: レポート管理ページ
+    - **Snapshots/**: スナップショット管理ページ
+    - **Subscriptions/**: サブスクリプション管理ページ
+    - **Websites/**: ウェブサイト管理ページ
+
+- **views/**: Bladeテンプレート
+  - **admin/**: 管理者用ビュー
+  - **auth/**: 認証関連ビュー
+  - **company/**: 企業関連ビュー
+  - **components/**: 共通コンポーネント
+  - **layouts/**: レイアウトテンプレート
+  - **profile/**: プロフィール関連ビュー
+  - **reports/**: レポート関連ビュー
+  - **snapshots/**: スナップショット関連ビュー
+  - **subscriptions/**: サブスクリプション関連ビュー
+  - **websites/**: ウェブサイト関連ビュー
+
+### routes/
+ルート定義ファイルが格納されるディレクトリです。
+
+- **web.php**: Webルート
+- **api.php**: APIルート
+- **channels.php**: ブロードキャストチャンネル
+- **console.php**: コンソールコマンド
+
+### tests/
+テストファイルが格納されるディレクトリです。
+
+- **Feature/**: 機能テスト
+  - **Auth/**: 認証関連テスト
+  - `ProfileTest.php`: プロフィール機能テスト
+  - `WebsiteTest.php`: ウェブサイト機能テスト
+
+- **Unit/**: ユニットテスト
+  - `AnalyticsServiceTest.php`: Analyticsサービステスト
+  - `DataSnapshotServiceTest.php`: スナップショットサービステスト
+  - `WebsiteServiceTest.php`: ウェブサイトサービステスト
+
+## 重要なファイル
+
+- **.env**: 環境変数設定
+- **composer.json**: 依存関係の管理
+- **package.json**: フロントエンド依存関係の管理
+- **docker-compose.yml**: Docker環境の設定
+- **artisan**: Laravel CLIツール
