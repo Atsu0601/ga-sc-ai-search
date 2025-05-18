@@ -13,6 +13,8 @@ use App\Http\Controllers\HeatmapController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use App\Http\Controllers\Admin;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ReportPowerPointController;
+use App\Http\Controllers\ReportGoogleSlideController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -89,6 +91,13 @@ Route::middleware(['auth', 'company.exists'])->group(function () {
     Route::get('/websites/{website}/snapshots/{id}', [DataSnapshotController::class, 'show'])->name('snapshots.show');
     Route::post('/websites/{website}/snapshots', [DataSnapshotController::class, 'create'])->name('snapshots.create');
     Route::get('/websites/{website}/snapshots/data', [DataSnapshotController::class, 'getData'])->name('snapshots.data');
+
+    // // PowerPoint出力
+    // Route::get('/reports/{id}/powerpoint', [ReportPowerPointController::class, 'export'])->name('reports.powerpoint');
+
+    // Google Slide出力
+    Route::get('/reports/{id}/export', [ReportGoogleSlideController::class, 'export'])->name('reports.export');
+    Route::get('/report/slides/{id}', [ReportGoogleSlideController::class, 'export'])->name('report.slides');
 });
 
 // Stripe Webhook
