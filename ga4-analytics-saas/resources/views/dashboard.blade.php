@@ -19,12 +19,14 @@
 
                             @if (Auth::user()->trial_ends_at && now()->lt(Auth::user()->trial_ends_at))
                                 <p class="text-sm text-yellow-600">
-                                    無料トライアル期間: {{ (int)now()->diffInDays(Auth::user()->trial_ends_at) }}日残っています（{{ Auth::user()->trial_ends_at->format('Y年m月d日') }}まで）
+                                    無料トライアル期間:
+                                    {{ (int) now()->diffInDays(Auth::user()->trial_ends_at) }}日残っています（{{ Auth::user()->trial_ends_at->format('Y年m月d日') }}まで）
                                 </p>
                             @endif
                         </div>
 
-                        <a href="{{ route('subscriptions.index') }}" class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
+                        <a href="{{ route('subscriptions.index') }}"
+                            class="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded">
                             プランをアップグレード
                         </a>
                     </div>
@@ -37,7 +39,8 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-gray-900">登録Webサイト</h3>
 
-                        <a href="{{ route('websites.create') }}" class="bg-green-500 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 rounded">
+                        <a href="{{ route('websites.create') }}"
+                            class="bg-green-500 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 rounded">
                             新規登録
                         </a>
                     </div>
@@ -53,20 +56,25 @@
                                     <h4 class="font-medium mb-2">{{ $website->name }}</h4>
 
                                     <p class="text-sm text-gray-600 mb-2">
-                                        <a href="{{ $website->url }}" target="_blank" class="text-blue-600 hover:underline">
+                                        <a href="{{ $website->url }}" target="_blank"
+                                            class="text-blue-600 hover:underline">
                                             {{ $website->url }}
                                         </a>
                                     </p>
 
                                     <div class="flex items-center justify-between">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                            {{ $website->status === 'active' ? 'bg-green-100 text-green-800' :
-                                              ($website->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                            {{ $website->status === 'active' ? '有効' :
-                                              ($website->status === 'pending' ? '準備中' : '無効') }}
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                            {{ $website->status === 'active'
+                                                ? 'bg-green-100 text-green-800'
+                                                : ($website->status === 'pending'
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : 'bg-red-100 text-red-800') }}">
+                                            {{ $website->status === 'active' ? '有効' : ($website->status === 'pending' ? '準備中' : '無効') }}
                                         </span>
 
-                                        <a href="{{ route('websites.show', $website->id) }}" class="text-sm text-blue-600 hover:underline">
+                                        <a href="{{ route('websites.show', $website->id) }}"
+                                            class="text-sm text-blue-600 hover:underline">
                                             詳細を見る →
                                         </a>
                                     </div>
@@ -92,9 +100,9 @@
 
                     @php
                         $reports = App\Models\AnalysisReport::whereIn('website_id', Auth::user()->websites->pluck('id'))
-                                                           ->orderByDesc('created_at')
-                                                           ->take(5)
-                                                           ->get();
+                            ->orderByDesc('created_at')
+                            ->take(5)
+                            ->get();
                     @endphp
 
                     @if ($reports->isEmpty())
@@ -105,22 +113,28 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Webサイト
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         レポートタイプ
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         期間
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         ステータス
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         作成日
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col"
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         操作
                                     </th>
                                 </tr>
@@ -135,21 +149,28 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-500">
-                                                {{ $report->report_type === 'executive' ? '経営者向け' :
-                                                  ($report->report_type === 'technical' ? '技術者向け' : 'コンテンツ向け') }}
+                                                {{ $report->report_type === 'executive'
+                                                    ? '経営者向け'
+                                                    : ($report->report_type === 'technical'
+                                                        ? '技術者向け'
+                                                        : 'コンテンツ向け') }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-gray-500">
-                                                {{ $report->date_range_start->format('Y/m/d') }} 〜 {{ $report->date_range_end->format('Y/m/d') }}
+                                                {{ $report->date_range_start->format('Y/m/d') }} 〜
+                                                {{ $report->date_range_end->format('Y/m/d') }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                                {{ $report->status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                   ($report->status === 'processing' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                                {{ $report->status === 'completed' ? '完了' :
-                                                   ($report->status === 'processing' ? '処理中' : '失敗') }}
+                                            <span
+                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                                {{ $report->status === 'completed'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : ($report->status === 'processing'
+                                                        ? 'bg-yellow-100 text-yellow-800'
+                                                        : 'bg-red-100 text-red-800') }}">
+                                                {{ $report->status === 'completed' ? '完了' : ($report->status === 'processing' ? '処理中' : '失敗') }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
