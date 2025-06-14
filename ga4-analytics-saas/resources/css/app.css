@@ -1,3 +1,5 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* DaisyUIのスタイルは自動的に読み込まれます */

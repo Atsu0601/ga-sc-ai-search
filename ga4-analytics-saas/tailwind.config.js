@@ -1,5 +1,6 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
+import daisyui from 'daisyui';
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -17,5 +18,23 @@ export default {
         },
     },
 
-    plugins: [forms],
+    plugins: [forms, daisyui],
+
+    // DaisyUIのテーマ設定
+    daisyui: {
+        themes: [
+            "light",     // デフォルトテーマ
+            "dark",      // ダークモード
+            "corporate", // ビジネス向け
+            "business",  // よりフォーマルなビジネス向け
+            "lofi"       // モノクロ
+        ],
+        darkTheme: "dark",
+        base: true,
+        styled: true,
+        utils: true,
+        logs: true,
+        rtl: false,
+        prefix: "",
+    },
 };
